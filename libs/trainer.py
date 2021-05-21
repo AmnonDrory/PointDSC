@@ -1,7 +1,7 @@
 import torch
 import time, os
 import numpy as np
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from utils.timer import Timer, AverageMeter
 from tqdm import tqdm
 # import matplotlib.pyplot as plt
@@ -40,18 +40,18 @@ class Trainer(object):
 
     def train(self):
         best_reg_recall = 0
-        print('training start!!')
+        print(f'{time.strftime("%m/%d %H:%M:%S")} training start!!')
         start_time = time.time()
 
         self.model.train()
         res = self.evaluate(0)
-        print(f'Evaluation: Epoch 0: SM Loss {res["sm_loss"]:.2f} Class Loss {res["class_loss"]:.2f} Trans Loss {res["trans_loss"]:.2f} Recall {res["reg_recall"]:.2f}')
+        print(f'{time.strftime("%m/%d %H:%M:%S")} Evaluation: Epoch 0: SM Loss {res["sm_loss"]:.2f} Class Loss {res["class_loss"]:.2f} Trans Loss {res["trans_loss"]:.2f} Recall {res["reg_recall"]:.2f}')
         for epoch in range(self.max_epoch):
             self.train_epoch(epoch + 1)  # start from epoch 1
 
             if (epoch + 1) % self.evaluate_interval == 0 or epoch == 0:
                 res = self.evaluate(epoch + 1)
-                print(f'Evaluation: Epoch {epoch+1}: SM Loss {res["sm_loss"]:.2f} Class Loss {res["class_loss"]:.2f} Trans Loss {res["trans_loss"]:.2f} Recall {res["reg_recall"]:.2f}')
+                print(f'{time.strftime("%m/%d %H:%M:%S")} Evaluation: Epoch {epoch+1}: SM Loss {res["sm_loss"]:.2f} Class Loss {res["class_loss"]:.2f} Trans Loss {res["trans_loss"]:.2f} Recall {res["reg_recall"]:.2f}')
                 if res['reg_recall'] > best_reg_recall:
                     best_reg_recall = res['reg_recall']
                     self._snapshot('best')
@@ -144,7 +144,7 @@ class Trainer(object):
                 for key in meter_list:
                     self.writer.add_scalar(f"Train/{key}", meter_dict[key].avg, curr_iter)
 
-                print(f"Epoch: {epoch} [{iter+1:4d}/{num_iter}] "
+                print(f"{time.strftime('%m/%d %H:%M:%S')} Epoch: {epoch} [{iter+1:4d}/{num_iter}] "
                       f"sm_loss: {meter_dict['sm_loss'].avg:.2f} "
                       f"class_loss: {meter_dict['class_loss'].avg:.2f} "
                       f"trans_loss: {meter_dict['trans_loss'].avg:.2f} "

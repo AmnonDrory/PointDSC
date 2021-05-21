@@ -16,6 +16,7 @@ from evaluation.benchmark_utils import set_seed, icp_refine
 from utils.timer import Timer
 set_seed()
 
+from general.paths import kitti_dir, fcgf_weights_file
 
 def eval_KITTI_per_pair(model, dloader, config, use_icp):
     """
@@ -112,7 +113,7 @@ def eval_KITTI_per_pair(model, dloader, config, use_icp):
     return stats
 
 def eval_KITTI(model, config, use_icp):
-    dset = KITTIDataset(root='/data/KITTI',
+    dset = KITTIDataset(root=kitti_dir,
                     split='test',
                     descriptor=config.descriptor,
                     in_dim=config.in_dim,
@@ -123,7 +124,8 @@ def eval_KITTI(model, config, use_icp):
                     augment_rotation=0.00, 
                     augment_translation=0.0,
                     )
-    dloader = get_dataloader(dset, batch_size=1, num_workers=16, shuffle=False)
+    num_workers = 1
+    dloader = get_dataloader(dset, batch_size=1, num_workers=num_workers, shuffle=False)
     stats = eval_KITTI_per_pair(model, dloader, config, use_icp)
     logging.info(f"Max memory allicated: {torch.cuda.max_memory_allocated() / 1024 ** 3:.2f}GB")
 

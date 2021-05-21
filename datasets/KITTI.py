@@ -3,6 +3,8 @@ import torch.utils.data as data
 from utils.pointcloud import make_point_cloud, estimate_normal
 from utils.SE3 import *
 
+from general.paths import kitti_dir, fcgf_weights_file
+
 class KITTIDataset(data.Dataset):
     def __init__(self,
                 root,
@@ -138,7 +140,7 @@ class KITTIDataset(data.Dataset):
 
 if __name__ == "__main__":
     dset = KITTIDataset(
-                    root='/data/KITTI/',
+                    root=kitti_dir,
                     split='test',
                     descriptor='fcgf',
                     num_node=5000,

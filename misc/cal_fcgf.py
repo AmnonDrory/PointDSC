@@ -7,6 +7,7 @@ import MinkowskiEngine as ME
 from utils.pointcloud import make_point_cloud
 from misc.fcgf import ResUNetBN2C as FCGF
 
+from general.paths import kitti_dir, fcgf_weights_file
 
 def extract_features(model,
                      xyz,
@@ -78,7 +79,6 @@ def extract_features(model,
     feats = feats[inds]
 
     feats = torch.tensor(feats, dtype=torch.float32)
-    coords = torch.tensor(coords, dtype=torch.int32)
 
     stensor = ME.SparseTensor(feats, coordinates=coords, device=device)
 
@@ -221,7 +221,8 @@ def process_kitti(voxel_size=0.30, split='train'):
         return pts
 
     MIN_DIST = 10
-    root = '/ssd2/xuyang/KITTI/dataset/'
+    root = kitti_dir
+    icp_path = root.replace('kitti/dataset','kitti/')
     R = np.array([
         7.533745e-03, -9.999714e-01, -6.166020e-04, 1.480249e-02, 7.280733e-04,
         -9.998902e-01, 9.998621e-01, 7.523790e-03, 1.480755e-02
@@ -284,12 +285,12 @@ def process_kitti(voxel_size=0.30, split='train'):
         xyz1 = xyzr1[:, :3]
 
         key = '%d_%d_%d' % (drive, t0, t1)
-        filename = root + 'icp/' + key + '.npy'
+        filename = icp_path + 'icp/' + key + '.npy'
         if key not in kitti_icp_cache:
             if not os.path.exists(filename):
                 # work on the downsampled xyzs, 0.05m == 5cm
-                sel0 = ME.utils.sparse_quantize(xyz0 / 0.05, return_index=True)
-                sel1 = ME.utils.sparse_quantize(xyz1 / 0.05, return_index=True)
+                _, sel0 = ME.utils.sparse_quantize(xyz0 / 0.05, return_index=True)
+                _, sel1 = ME.utils.sparse_quantize(xyz1 / 0.05, return_index=True)
 
                 M = (velo2cam @ positions[0].T @ np.linalg.inv(positions[1].T)
                      @ np.linalg.inv(velo2cam)).T
@@ -328,7 +329,7 @@ def process_kitti(voxel_size=0.30, split='train'):
             voxel_size=voxel_size,
             skip_check=True,
         )
-        filename = f"{root}/feat_{split}/drive{drive}-pair{t0}_{t1}"
+        filename = f"{root}/fcgf_{split}/drive{drive}-pair{t0}_{t1}"
         np.savez_compressed(
             filename,
             xyz0=xyz_down0.astype(np.float32),
@@ -341,30 +342,31 @@ def process_kitti(voxel_size=0.30, split='train'):
 
 
 if __name__ == '__main__':
-    model = FCGF(
-        1,
-        32,
-        bn_momentum=0.05,
-        conv1_kernel_size=7,
-        normalize_feature=True
-    ).cuda()
-    # 3DMatch: http://node2.chrischoy.org/data/projects/DGR/ResUNetBN2C-feat32-3dmatch-v0.05.pth
-    # KITTI: http://node2.chrischoy.org/data/projects/DGR/ResUNetBN2C-feat32-kitti-v0.3.pth
-    checkpoint = torch.load("misc/ResUNetBN2C-feat32-3dmatch-v0.05.pth")
-    model.load_state_dict(checkpoint['state_dict'])
-    model.eval()
-    # process_3dmatch(voxel_size=0.05)
-    # process_3dmatch_test(voxel_size=0.05)
-    process_redwood(voxel_size=0.05)
-
     # model = FCGF(
     #     1,
     #     32,
     #     bn_momentum=0.05,
-    #     conv1_kernel_size=5,
+    #     conv1_kernel_size=7,
     #     normalize_feature=True
     # ).cuda()
-    # checkpoint = torch.load("misc/ResUNetBN2C-feat32-kitti-v0.3.pth")
+    # # 3DMatch: http://node2.chrischoy.org/data/projects/DGR/ResUNetBN2C-feat32-3dmatch-v0.05.pth
+    # # KITTI: http://node2.chrischoy.org/data/projects/DGR/ResUNetBN2C-feat32-kitti-v0.3.pth
+    # checkpoint = torch.load("misc/ResUNetBN2C-feat32-3dmatch-v0.05.pth")
     # model.load_state_dict(checkpoint['state_dict'])
     # model.eval()
-    # process_kitti(voxel_size=0.30, split='train')
+    # # process_3dmatch(voxel_size=0.05)
+    # # process_3dmatch_test(voxel_size=0.05)
+    # process_redwood(voxel_size=0.05)
+
+    model = FCGF(
+        1,
+        32,
+        bn_momentum=0.05,
+        conv1_kernel_size=5,
+        normalize_feature=True
+    ).cuda()
+    checkpoint = torch.load(fcgf_weights_file)
+    model.load_state_dict(checkpoint['state_dict'])
+    model.eval()
+    process_kitti(voxel_size=0.30, split='test')
+    process_kitti(voxel_size=0.30, split='val')

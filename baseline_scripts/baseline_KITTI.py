@@ -12,7 +12,8 @@ from utils.timer import Timer
 from baseline_scripts.baseline_3DMatch import SM, RANSAC, GCRANSAC
 from config import str2bool
 
-
+from general.paths import kitti_dir, fcgf_weights_file
+  
 def eval_KITTI_scene(method, dloader, args):
     """
     Evaluate baseline methods on KITTI testset.
@@ -95,7 +96,7 @@ def eval_KITTI_scene(method, dloader, args):
 
 
 def eval_KITTI(method, args):
-    dset = KITTIDataset(root='/data/KITTI/',
+    dset = KITTIDataset(root=kitti_dir,
                         split='test',
                         descriptor=args.descriptor,
                         in_dim=6,

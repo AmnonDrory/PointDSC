@@ -15,6 +15,10 @@ from torch import optim
 if __name__ == '__main__':
     config = get_config()
     dconfig = vars(config)
+
+    if True: # AD UNDO
+        dconfig['batch_size'] = 3 
+
     for k in dconfig:
         print(f"    {k}: {dconfig[k]}")
     config = edict(dconfig)

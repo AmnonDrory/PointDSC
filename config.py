@@ -2,6 +2,8 @@ import argparse
 import time
 import os
 
+from general.paths import kitti_dir, fcgf_weights_file
+
 arg_lists = []
 parser = argparse.ArgumentParser()
 
@@ -16,7 +18,7 @@ def str2bool(v):
     return v.lower() in ('true', '1')
 
 
-dataset = '3DMatch'
+dataset = 'kitti'
 experiment_id = f"PointDSC_{dataset}_{time.strftime('%m%d%H%M')}"
 # snapshot configurations
 snapshot_arg = add_argument_group('Snapshot')
@@ -59,7 +61,7 @@ opt_arg.add_argument('--scheduler_interval', type=int, default=1)
 # Dataset and dataloader configurations
 data_arg = add_argument_group('Data')
 if dataset == '3DMatch':
-    data_arg.add_argument('--root', type=str, default='/data/3DMatch')
+    data_arg.add_argument('--root', type=str, default='dummy(root)')
     data_arg.add_argument('--descriptor', type=str, default='fcgf', choices=['d3feat', 'fpfh', 'fcgf'])
     data_arg.add_argument('--inlier_threshold', type=float, default=0.10)
     net_arg.add_argument('--sigma_d', type=float, default=0.10)
@@ -67,7 +69,7 @@ if dataset == '3DMatch':
     data_arg.add_argument('--re_thre', type=float, default=15, help='rotation error thrshold (deg)')
     data_arg.add_argument('--te_thre', type=float, default=30, help='translation error thrshold (cm)')
 else:
-    data_arg.add_argument('--root', type=str, default='/data/KITTI')
+    data_arg.add_argument('--root', type=str, default=kitti_dir)
     data_arg.add_argument('--descriptor', type=str, default='fcgf', choices=['fcgf', 'fpfh'])
     data_arg.add_argument('--inlier_threshold', type=float, default=1.2)
     net_arg.add_argument('--sigma_d', type=float, default=1.2)
