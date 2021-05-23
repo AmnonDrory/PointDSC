@@ -120,6 +120,7 @@ class Trainer(object):
 
             # backward
             loss.backward()
+            # AD OBSERVATION - this is where gradients need to be collected
             do_step = True
             for param in self.model.parameters():
                 if param.grad is not None:
@@ -136,8 +137,9 @@ class Trainer(object):
                         meter_dict[key].update(stats[key])
 
             else:  # debug the loss calculation process.
-                import pdb
-                pdb.set_trace()
+                print("Bug found, ignoring.")
+                # import pdb
+                # pdb.set_trace()
 
             if (iter + 1) % 100 == 0 and self.verbose:
                 curr_iter = num_iter * (epoch - 1) + iter
