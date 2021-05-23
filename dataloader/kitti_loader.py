@@ -13,6 +13,9 @@ from dataloader.base_loader import *
 from dataloader.transforms import *
 from util.pointcloud import get_matching_indices, make_open3d_point_cloud
 
+from general.paths import kitti_dir, fcgf_weights_file
+from easydict import EasyDict as edict
+
 kitti_cache = {}
 kitti_icp_cache = {}
 
@@ -249,6 +252,14 @@ class KITTINMPairDataset(KITTIPairDataset):
                manual_seed=False,
                config=None,
                rank=None):
+    
+    if config is None:
+      config=edict(
+            {'kitti_dir': os.path.split(kitti_dir)[0], 
+            'icp_cache_path': 'icp',
+            'voxel_size': 0.3, 
+            'positive_pair_search_voxel_size_multiplier': 1.5,
+            })
     self.root = root = os.path.join(config.kitti_dir, 'dataset')
     self.icp_path = os.path.join(config.kitti_dir, config.icp_cache_path)
     try:

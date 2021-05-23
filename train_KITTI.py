@@ -11,6 +11,8 @@ from libs.trainer import Trainer
 from models.PointDSC import PointDSC
 from torch import optim
 
+from dataloader.kitti_loader import KITTINMPairDataset
+from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 
 if __name__ == '__main__':
     config = get_config()
@@ -70,31 +72,52 @@ if __name__ == '__main__':
     )
 
     # create dataset and dataloader
-    
-    train_set = KITTIDataset(
-        root=config.root,
-        split='train',
-        descriptor=config.descriptor,
-        in_dim=config.in_dim,
-        inlier_threshold=config.inlier_threshold,
-        num_node=config.num_node, 
-        use_mutual=config.use_mutual,
-        augment_axis=config.augment_axis,
-        augment_rotation=config.augment_rotation,
-        augment_translation=config.augment_translation,
-    )
-    val_set = KITTIDataset(
-        root=config.root,
-        split='val',
-        descriptor=config.descriptor,
-        in_dim=config.in_dim,
-        inlier_threshold=config.inlier_threshold,
-        num_node=config.num_node, 
-        use_mutual=config.use_mutual,
-        augment_axis=config.augment_axis,
-        augment_rotation=config.augment_rotation,
-        augment_translation=config.augment_translation,
-    )
+    if True: #AD UNDO
+
+        ex = {}
+        for phase in ['train', 'val']:
+            dataset = KITTINMPairDataset(
+                phase,
+                transform=None, random_rotation=False, random_scale=False,
+                manual_seed=False, config=None, rank=0)
+
+            ex[phase] = LidarFeatureExtractor(
+                    dataset=dataset,
+                    num_node=config.num_node,
+                    use_mutual=config.use_mutual,
+                    augment_axis=config.augment_axis,
+                    augment_rotation=config.augment_rotation,
+                    augment_translation=config.augment_translation
+                    )
+        train_set = ex['train']
+        val_set = ex['val']
+
+    else:
+        train_set = KITTIDataset(
+            root=config.root,
+            split='train',
+            descriptor=config.descriptor,
+            in_dim=config.in_dim,
+            inlier_threshold=config.inlier_threshold,
+            num_node=config.num_node, 
+            use_mutual=config.use_mutual,
+            augment_axis=config.augment_axis,
+            augment_rotation=config.augment_rotation,
+            augment_translation=config.augment_translation,
+        )
+        val_set = KITTIDataset(
+            root=config.root,
+            split='val',
+            descriptor=config.descriptor,
+            in_dim=config.in_dim,
+            inlier_threshold=config.inlier_threshold,
+            num_node=config.num_node, 
+            use_mutual=config.use_mutual,
+            augment_axis=config.augment_axis,
+            augment_rotation=config.augment_rotation,
+            augment_translation=config.augment_translation,
+        )
+        
     config.train_loader = get_dataloader(dataset=train_set, 
                                         batch_size=config.batch_size,
                                         num_workers=config.num_workers,

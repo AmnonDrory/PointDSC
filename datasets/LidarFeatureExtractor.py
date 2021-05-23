@@ -2,12 +2,13 @@ import os
 import torch.utils.data as data
 from utils.pointcloud import make_point_cloud, estimate_normal
 from utils.SE3 import *
-from dataloader.kitti_loader import KITTINMPairDataset # AD TODO - this doesn't belong here. The actual dset should be supplied as an argument to __init__
-from easydict import EasyDict as edict # AD TODO - this doesn't belong here.
 from misc.fcgf import ResUNetBN2C as FCGF
 import MinkowskiEngine as ME
 
+from dataloader.kitti_loader import KITTINMPairDataset
 from general.paths import kitti_dir, fcgf_weights_file
+
+USE_CUDA = False # AD TODO: temporary hack. we should use cuda for improved running time.
 
 class LidarFeatureExtractor(data.Dataset):
     def __init__(self,
@@ -41,9 +42,13 @@ class LidarFeatureExtractor(data.Dataset):
             32,
             bn_momentum=0.05,
             conv1_kernel_size=5,
-            normalize_feature=True
-        ).cuda()
-        checkpoint = torch.load(fcgf_weights_file)
+            normalize_feature=True)
+        if USE_CUDA:
+            self.device = 'cuda:%d' % torch.cuda.current_device()
+            self.model = self.model.cuda()
+            checkpoint = torch.load(fcgf_weights_file, map_location=self.device)
+        else:
+            checkpoint = torch.load(fcgf_weights_file)
         self.model.load_state_dict(checkpoint['state_dict'])
         self.model.eval()               
 
@@ -51,7 +56,8 @@ class LidarFeatureExtractor(data.Dataset):
     def __getitem__(self, index):
         
         unique_xyz0_th, unique_xyz1_th, coords0, coords1, feats0, feats1, matches, trans, extra_package = self.dataset.__getitem__(index)
-        coords0, coords1, feats0, feats1 = coords0.cuda(), coords1.cuda(), feats0.cuda(), feats1.cuda()
+        if USE_CUDA:
+            coords0, coords1, feats0, feats1 = coords0.cuda(), coords1.cuda(), feats0.cuda(), feats1.cuda()
 
         # AD TODO: it might be wasteful that we send each cloud separately through the FCGF network, instead of sending an entire batch together.
         coords0 = ME.utils.batched_coordinates([coords0.float()])
@@ -182,12 +188,7 @@ if __name__ == "__main__":
         random_rotation=False,
         random_scale=False,
         manual_seed=False,
-        config=edict(
-            {'kitti_dir': os.path.split(kitti_dir)[0], 
-            'icp_cache_path': 'icp',
-            'voxel_size': 0.3, 
-            'positive_pair_search_voxel_size_multiplier': 1.5,
-            }),
+        config=None,
         rank=0)
 
     ex = LidarFeatureExtractor(
