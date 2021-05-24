@@ -15,8 +15,12 @@ from dataloader.kitti_loader import KITTINMPairDataset
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader
+import torch
+import numpy as np
+import torch.multiprocessing as mp
+import torch.distributed as dist
 
-if __name__ == '__main__':
+def main():
     config = get_config()
     dconfig = vars(config)
 
@@ -40,6 +44,57 @@ if __name__ == '__main__':
         open(os.path.join(config.snapshot_dir, 'config.json'), 'w'),
         indent=4,
     )
+
+    seed = np.random.randint(np.iinfo(np.int32).max)
+    world_size = torch.cuda.device_count()  
+    config.batch_size = int(np.ceil(config.batch_size/world_size))
+    print("%d GPUs are available, re-adjusted local batch size to %d" % (world_size, config.batch_size))
+  
+    if world_size == 1:
+        train_parallel(0, world_size, seed, config)
+    else:
+        mp.spawn(train_parallel, nprocs=world_size, args=(world_size,seed, config))  
+
+def make_loader(phase, PointDSC_config, rank, world_size, seed):
+    Dataset = KITTINMPairDataset
+    shuffle = (phase == 'train')
+
+    dset = Dataset(phase,
+                transform=None, random_rotation=False, random_scale=False,
+                manual_seed=False, config=None, rank=rank)
+
+    sampler = torch.utils.data.distributed.DistributedSampler(
+        dset,
+        num_replicas=world_size,
+        rank=rank,
+        shuffle=shuffle,
+        seed=seed)
+
+    collation_fn = CollationFunctionFactory(concat_correspondences=False,
+                                            collation_type='collate_pair')
+
+    loader = torch.utils.data.DataLoader(
+        dset,
+        batch_size=PointDSC_config.batch_size,
+        shuffle=False,
+        num_workers=PointDSC_config.num_workers,
+        collate_fn=collation_fn,
+        sampler=sampler,
+        pin_memory=True,
+        drop_last=True)
+
+    return loader
+
+def train_parallel(rank, world_size, seed, config):
+    # This function is performed in parallel in several processes, one for each available GPU
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '8882'
+    dist.init_process_group(backend='nccl', world_size=world_size, rank=rank)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    torch.cuda.set_device(rank)
+    device = 'cuda:%d' % torch.cuda.current_device()
+    print("process %d, GPU: %s" % (rank, device))
 
     # create model 
     config.model = PointDSC(
@@ -75,29 +130,8 @@ if __name__ == '__main__':
     )
 
     # create dataset and dataloader
-    collation_fn = CollationFunctionFactory(concat_correspondences=False,
-                                            collation_type='collate_pair')
-    train_set = KITTINMPairDataset(
-            'train',
-            transform=None, random_rotation=False, random_scale=False,
-            manual_seed=False, config=None, rank=0)
-
-    val_set = KITTINMPairDataset(
-            'val',
-            transform=None, random_rotation=False, random_scale=False,
-            manual_seed=False, config=None, rank=0)                
-
-    config.train_loader = DataLoader(train_set,
-                                    batch_size=config.batch_size,
-                                    collate_fn=collation_fn,
-                                    num_workers=config.num_workers,
-                                    shuffle=True)
-
-    config.val_loader = DataLoader(val_set,
-                                    batch_size=config.batch_size,
-                                    collate_fn=collation_fn,
-                                    num_workers=config.num_workers,
-                                    shuffle=False)
+    config.train_loader = make_loader('train', config, rank, world_size, seed)
+    config.val_loader = make_loader('val', config, rank, world_size, seed)
 
     config.train_feature_extractor = LidarFeatureExtractor(
             split='train',
@@ -121,7 +155,6 @@ if __name__ == '__main__':
             augment_translation=0.0,                
             )                                        
 
-
     # create evaluation
     config.evaluate_metric = {
         "ClassificationLoss": ClassificationLoss(balanced=config.balanced),
@@ -134,5 +167,8 @@ if __name__ == '__main__':
         "TransformationLoss": config.weight_transformation,
     }
 
-    trainer = Trainer(config)
+    trainer = Trainer(config, rank)
     trainer.train()
+
+if __name__ == '__main__':
+    main()
