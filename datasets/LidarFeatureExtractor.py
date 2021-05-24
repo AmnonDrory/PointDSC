@@ -8,12 +8,39 @@ import MinkowskiEngine as ME
 from dataloader.kitti_loader import KITTINMPairDataset
 from general.paths import kitti_dir, fcgf_weights_file
 
-USE_CUDA = False # AD TODO: temporary hack. we should use cuda for improved running time.
+def collate_fn(list_data):
+    min_num = 1e10
+    # clip the pair having more correspondence during training.
+    for ind, (corr_pos, src_keypts, tgt_keypts, gt_trans, gt_labels) in enumerate(list_data):
+        if len(gt_labels) < min_num:
+            min_num = min(min_num, len(gt_labels))
 
-class LidarFeatureExtractor(data.Dataset):
+    batched_corr_pos = []
+    batched_src_keypts = []
+    batched_tgt_keypts = []
+    batched_gt_trans = []
+    batched_gt_labels = []
+    for ind, (corr_pos, src_keypts, tgt_keypts, gt_trans, gt_labels) in enumerate(list_data):
+        sel_ind = np.random.choice(len(gt_labels), min_num, replace=False)        
+        batched_corr_pos.append(corr_pos[sel_ind, :][None,:,:])
+        batched_src_keypts.append(src_keypts[sel_ind, :][None,:,:])
+        batched_tgt_keypts.append(tgt_keypts[sel_ind, :][None,:,:])
+        batched_gt_trans.append(gt_trans[None,:,:])
+        batched_gt_labels.append(gt_labels[sel_ind][None, :])
+    
+    batched_corr_pos = torch.from_numpy(np.concatenate(batched_corr_pos, axis=0))
+    batched_src_keypts = torch.from_numpy(np.concatenate(batched_src_keypts, axis=0))
+    batched_tgt_keypts = torch.from_numpy(np.concatenate(batched_tgt_keypts, axis=0))
+    batched_gt_trans = torch.from_numpy(np.concatenate(batched_gt_trans, axis=0))
+    batched_gt_labels = torch.from_numpy(np.concatenate(batched_gt_labels, axis=0))
+    return batched_corr_pos, batched_src_keypts, batched_tgt_keypts, batched_gt_trans, batched_gt_labels
+
+
+class LidarFeatureExtractor():
     def __init__(self,
-                dataset,
+                split='train',
                 in_dim=6,
+                inlier_threshold=0.60,
                 num_node=5000,
                 use_mutual=True,
                 augment_axis=0,
@@ -21,6 +48,8 @@ class LidarFeatureExtractor(data.Dataset):
                 augment_translation=0.01,
                 ):
 
+        self.split = split
+        self.inlier_threshold = inlier_threshold
         self.in_dim = in_dim
         self.descriptor = 'fcgf'
         self.num_node = num_node
@@ -32,58 +61,22 @@ class LidarFeatureExtractor(data.Dataset):
         # containers
         self.ids_list = []
 
-        self.dataset = dataset
-        self.split = self.dataset.phase
-        self.downsample = self.dataset.voxel_size
-        self.inlier_threshold = 2*self.dataset.voxel_size
-
-        self.model = FCGF(
+        self.feat_model = FCGF(
             1,
             32,
             bn_momentum=0.05,
             conv1_kernel_size=5,
             normalize_feature=True)
-        if USE_CUDA:
-            self.device = 'cuda:%d' % torch.cuda.current_device()
-            self.model = self.model.cuda()
-            checkpoint = torch.load(fcgf_weights_file, map_location=self.device)
-        else:
-            checkpoint = torch.load(fcgf_weights_file)
-        self.model.load_state_dict(checkpoint['state_dict'])
-        self.model.eval()               
+        self.feat_model = self.feat_model.cuda()
+        self.device = 'cuda:%d' % torch.cuda.current_device()
+        checkpoint = torch.load(fcgf_weights_file, map_location=self.device)
+        self.feat_model.load_state_dict(checkpoint['state_dict'])
+        self.feat_model.eval()               
 
-
-    def __getitem__(self, index):
-        
-        unique_xyz0_th, unique_xyz1_th, coords0, coords1, feats0, feats1, matches, trans, extra_package = self.dataset.__getitem__(index)
-        if USE_CUDA:
-            coords0, coords1, feats0, feats1 = coords0.cuda(), coords1.cuda(), feats0.cuda(), feats1.cuda()
-
-        # AD TODO: it might be wasteful that we send each cloud separately through the FCGF network, instead of sending an entire batch together.
-        coords0 = ME.utils.batched_coordinates([coords0.float()])
-        stensors0 = ME.SparseTensor(feats0, coordinates=coords0, device=feats0.device)
-        features0 = self.model(stensors0).F        
-
-        coords1 = ME.utils.batched_coordinates([coords1.float()])
-        stensors1 = ME.SparseTensor(feats1, coordinates=coords1, device=feats0.device)
-        features1 = self.model(stensors1).F        
-
-        src_keypts = unique_xyz0_th.detach().cpu().numpy()
-        tgt_keypts = unique_xyz1_th.detach().cpu().numpy()
-        src_features = features0.detach().cpu().numpy()
-        tgt_features = features1.detach().cpu().numpy()
-        if self.descriptor == 'fpfh':
-            src_features = src_features / (np.linalg.norm(src_features, axis=1, keepdims=True) + 1e-6)
-            tgt_features = tgt_features / (np.linalg.norm(tgt_features, axis=1, keepdims=True) + 1e-6)
-
-        # compute ground truth transformation
-        orig_trans = trans
-        
+    def get_pairs(self, src_keypts, tgt_keypts, src_features, tgt_features, orig_trans):
         # AD OBSERVATION - dramatic augmentation of the xyz clouds, AFTER the
         #           FCGF features have already been calculated. This is
         #           not realistic, it gives FCGF oracle level data. 
-
-        # data augmentation
         if self.split == 'train':
             src_keypts += np.random.rand(src_keypts.shape[0], 3) * 0.05
             tgt_keypts += np.random.rand(tgt_keypts.shape[0], 3) * 0.05
@@ -177,9 +170,41 @@ class LidarFeatureExtractor(data.Dataset):
             gt_trans.astype(np.float32), \
             labels.astype(np.float32),
 
-    def __len__(self):
-        return len(self.dataset)
+    def process_batch(self, input_dict):
 
+        xyz0=input_dict['pcd0']
+        xyz1=input_dict['pcd1']
+        iC0=input_dict['sinput0_C'].cuda()
+        iC1=input_dict['sinput1_C'].cuda()
+        iF0=input_dict['sinput0_F'].cuda()
+        iF1=input_dict['sinput1_F'].cuda()
+        T_gt = input_dict['T_gt']
+        lens = input_dict['len_batch']
+
+        sinput0 = ME.SparseTensor(iF0, coordinates=iC0, device=self.device)
+        oF0 = self.feat_model(sinput0).F
+
+        sinput1 = ME.SparseTensor(iF1, coordinates=iC1, device=self.device)
+        oF1 = self.feat_model(sinput1).F
+
+        res_list = []
+        src_to = 0
+        tgt_to = 0
+        for i, (src_len, tgt_len) in enumerate(lens):
+            src_from = src_to
+            src_to = src_from + src_len
+            tgt_from = tgt_to
+            tgt_to = tgt_from + tgt_len
+            src_keypts = xyz0[i].detach().cpu().numpy()
+            tgt_keypts = xyz1[i].detach().cpu().numpy()
+            src_features = oF0[src_from:src_to,:].detach().cpu().numpy()
+            tgt_features = oF1[tgt_from:tgt_to,:].detach().cpu().numpy()
+            orig_trans = T_gt[i].numpy()
+
+            cur_res = self.get_pairs(src_keypts, tgt_keypts, src_features, tgt_features, orig_trans)
+            res_list.append(cur_res)
+        return collate_fn(res_list)
+		
 if __name__ == "__main__":
     phase = 'train'
     dset = KITTINMPairDataset(
@@ -190,19 +215,3 @@ if __name__ == "__main__":
         manual_seed=False,
         config=None,
         rank=0)
-
-    ex = LidarFeatureExtractor(
-                    dataset=dset,
-                    num_node=5000,
-                    use_mutual=False,
-                    augment_axis=0,
-                    augment_rotation=0,
-                    augment_translation=0.00
-                    )
-
-    print(len(ex))
-    for i in range(ex.__len__()):
-        ret_dict = ex.__getitem__(i)
-        for k in ret_dict:
-            print('%f ' % k.flatten()[0], end=None)
-        print('')

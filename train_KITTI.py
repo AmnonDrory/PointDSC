@@ -13,6 +13,8 @@ from torch import optim
 
 from dataloader.kitti_loader import KITTINMPairDataset
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
+from dataloader.base_loader import CollationFunctionFactory # AD UNDO
+import torch
 
 if __name__ == '__main__':
     config = get_config()
@@ -20,6 +22,7 @@ if __name__ == '__main__':
 
     if True: # AD UNDO
         dconfig['batch_size'] = 3 
+        dconfig['num_workers'] = 1
 
     for k in dconfig:
         print(f"    {k}: {dconfig[k]}")
@@ -72,52 +75,31 @@ if __name__ == '__main__':
     )
 
     # create dataset and dataloader
-    if True: #AD UNDO
-
-        ex = {}
-        for phase in ['train', 'val']:
-            dataset = KITTINMPairDataset(
-                phase,
-                transform=None, random_rotation=False, random_scale=False,
-                manual_seed=False, config=None, rank=0)
-
-            ex[phase] = LidarFeatureExtractor(
-                    dataset=dataset,
-                    num_node=config.num_node,
-                    use_mutual=config.use_mutual,
-                    augment_axis=config.augment_axis,
-                    augment_rotation=config.augment_rotation,
-                    augment_translation=config.augment_translation
-                    )
-        train_set = ex['train']
-        val_set = ex['val']
-
-    else:
-        train_set = KITTIDataset(
-            root=config.root,
-            split='train',
-            descriptor=config.descriptor,
-            in_dim=config.in_dim,
-            inlier_threshold=config.inlier_threshold,
-            num_node=config.num_node, 
-            use_mutual=config.use_mutual,
-            augment_axis=config.augment_axis,
-            augment_rotation=config.augment_rotation,
-            augment_translation=config.augment_translation,
-        )
-        val_set = KITTIDataset(
-            root=config.root,
-            split='val',
-            descriptor=config.descriptor,
-            in_dim=config.in_dim,
-            inlier_threshold=config.inlier_threshold,
-            num_node=config.num_node, 
-            use_mutual=config.use_mutual,
-            augment_axis=config.augment_axis,
-            augment_rotation=config.augment_rotation,
-            augment_translation=config.augment_translation,
-        )
-        
+    
+    train_set = KITTIDataset(
+        root=config.root,
+        split='train',
+        descriptor=config.descriptor,
+        in_dim=config.in_dim,
+        inlier_threshold=config.inlier_threshold,
+        num_node=config.num_node, 
+        use_mutual=config.use_mutual,
+        augment_axis=config.augment_axis,
+        augment_rotation=config.augment_rotation,
+        augment_translation=config.augment_translation,
+    )
+    val_set = KITTIDataset(
+        root=config.root,
+        split='val',
+        descriptor=config.descriptor,
+        in_dim=config.in_dim,
+        inlier_threshold=config.inlier_threshold,
+        num_node=config.num_node, 
+        use_mutual=config.use_mutual,
+        augment_axis=config.augment_axis,
+        augment_rotation=config.augment_rotation,
+        augment_translation=config.augment_translation,
+    )
     config.train_loader = get_dataloader(dataset=train_set, 
                                         batch_size=config.batch_size,
                                         num_workers=config.num_workers,
@@ -126,6 +108,32 @@ if __name__ == '__main__':
                                         batch_size=config.batch_size,
                                         num_workers=config.num_workers,
                                         )
+ #XXXXX
+    dset = KITTINMPairDataset(
+                'val',
+                transform=None, random_rotation=False, random_scale=False,
+                manual_seed=False, config=None, rank=0)
+
+    collation_fn = CollationFunctionFactory(concat_correspondences=False,
+                                            collation_type='collate_pair')
+
+    loader = torch.utils.data.DataLoader(dset,
+                                        batch_size=config.batch_size,
+                                        collate_fn=collation_fn,
+                                        num_workers=1,
+                                        shuffle=False)
+
+    ex = LidarFeatureExtractor(
+                split='val',
+                in_dim=config.in_dim,
+                inlier_threshold=config.inlier_threshold,
+                num_node=config.num_node, 
+                use_mutual=config.use_mutual,
+                augment_axis=config.augment_axis,
+                augment_rotation=config.augment_rotation,
+                augment_translation=config.augment_translation,                
+                )                                        
+ #XXXXX
     
     # create evaluation
     config.evaluate_metric = {
