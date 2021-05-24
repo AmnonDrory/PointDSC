@@ -25,8 +25,8 @@ def main():
     dconfig = vars(config)
 
     if True: # AD UNDO
-        dconfig['batch_size'] = 3 
-        dconfig['num_workers'] = 1
+        #dconfig['batch_size'] = 3 
+        dconfig['num_workers'] = 2
 
     for k in dconfig:
         print(f"    {k}: {dconfig[k]}")

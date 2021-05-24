@@ -91,7 +91,7 @@ class Trainer(object):
             meter_dict[key] = AverageMeter()
         data_timer, model_timer = Timer(), Timer()
 
-        num_iter = int(len(self.train_loader.dataset) / self.batch_size)
+        num_iter = len(self.train_loader)
         num_iter = min(self.training_max_iter, num_iter)
         trainer_loader_iter = self.train_loader.__iter__()
         for iter in range(num_iter):
@@ -164,7 +164,7 @@ class Trainer(object):
                 # import pdb
                 # pdb.set_trace()
 
-            if (iter + 1) % 100 == 0 and self.verbose:
+            if (iter + 1) % 50 == 0 and self.verbose:
                 if self.rank == 0:
                     curr_iter = num_iter * (epoch - 1) + iter
                     report = torch.tensor([1.0, data_timer.avg, model_timer.avg, meter_dict['class_loss'].avg, meter_dict['trans_loss'].avg, meter_dict['sm_loss'].avg, meter_dict['reg_recall'].avg, meter_dict['re'].avg, meter_dict['te'].avg, meter_dict['precision'].avg, meter_dict['recall'].avg, meter_dict['f1'].avg], device=torch.cuda.current_device()) 
@@ -207,7 +207,7 @@ class Trainer(object):
             meter_dict[key] = AverageMeter()
         data_timer, model_timer = Timer(), Timer()
 
-        num_iter = int(len(self.val_loader.dataset) / self.batch_size)
+        num_iter = len(self.val_loader)
         num_iter = min(self.val_max_iter, num_iter)
         val_loader_iter = self.val_loader.__iter__()
         for iter in range(num_iter):
