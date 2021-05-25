@@ -165,10 +165,10 @@ class Trainer(object):
                 # pdb.set_trace()
 
             if (iter + 1) % 50 == 0 and self.verbose:
+                curr_iter = num_iter * (epoch - 1) + iter
+                report = torch.tensor([1.0, data_timer.avg, model_timer.avg, meter_dict['class_loss'].avg, meter_dict['trans_loss'].avg, meter_dict['sm_loss'].avg, meter_dict['reg_recall'].avg, meter_dict['re'].avg, meter_dict['te'].avg, meter_dict['precision'].avg, meter_dict['recall'].avg, meter_dict['f1'].avg], device=torch.cuda.current_device())
+                dist.all_reduce(report, op=dist.ReduceOp.SUM)
                 if self.rank == 0:
-                    curr_iter = num_iter * (epoch - 1) + iter
-                    report = torch.tensor([1.0, data_timer.avg, model_timer.avg, meter_dict['class_loss'].avg, meter_dict['trans_loss'].avg, meter_dict['sm_loss'].avg, meter_dict['reg_recall'].avg, meter_dict['re'].avg, meter_dict['te'].avg, meter_dict['precision'].avg, meter_dict['recall'].avg, meter_dict['f1'].avg], device=torch.cuda.current_device()) 
-                    dist.all_reduce(report, op=dist.ReduceOp.SUM)
                     mean_meter_dict = {}
                     count = report[0].item()
                     data_timer_avg            = report[ 1].item() / count
