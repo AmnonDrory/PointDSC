@@ -6,7 +6,6 @@ from misc.fcgf import ResUNetBN2C as FCGF
 import MinkowskiEngine as ME
 
 from dataloader.kitti_loader import KITTINMPairDataset
-from general.paths import kitti_dir, fcgf_weights_file
 
 def collate_fn(list_data):
     min_num = 1e10
@@ -46,8 +45,9 @@ class LidarFeatureExtractor():
                 augment_axis=0,
                 augment_rotation=1.0,
                 augment_translation=0.01,
+                fcgf_weights_file = None
                 ):
-
+        assert fcgf_weights_file is not None, "user must supply a path to the FCGF weights as an argument"
         self.split = split
         self.inlier_threshold = inlier_threshold
         self.in_dim = in_dim

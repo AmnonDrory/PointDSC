@@ -142,6 +142,7 @@ def train_parallel(rank, world_size, seed, config):
             augment_axis=config.augment_axis,
             augment_rotation=config.augment_rotation,
             augment_translation=config.augment_translation,                
+            fcgf_weights_file=config.fcgf_weights_file
             )                                        
 
     config.val_feature_extractor = LidarFeatureExtractor(
@@ -153,6 +154,7 @@ def train_parallel(rank, world_size, seed, config):
             augment_axis=0,
             augment_rotation=0.0,
             augment_translation=0.0,                
+            fcgf_weights_file=config.fcgf_weights_file
             )                                        
 
     # create evaluation

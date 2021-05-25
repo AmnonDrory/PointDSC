@@ -77,6 +77,7 @@ else:
     data_arg.add_argument('--re_thre', type=float, default=5, help='rotation error thrshold (deg)')
     data_arg.add_argument('--te_thre', type=float, default=60, help='translation error thrshold (cm)')
 
+data_arg.add_argument('--fcgf_weights_file', type=str, default=None, help='file containing FCGF network weights')
 data_arg.add_argument('--num_node', type=int, default=1000)
 data_arg.add_argument('--use_mutual', type=str2bool, default=False)
 data_arg.add_argument('--augment_axis', type=int, default=3)

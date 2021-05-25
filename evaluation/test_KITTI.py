@@ -144,7 +144,8 @@ def eval_KITTI(model, config, use_icp):
             use_mutual=config.use_mutual,
             augment_axis=0,
             augment_rotation=0.0,
-            augment_translation=0.0,                
+            augment_translation=0.0,   
+            fcgf_weights_file=config.fcgf_weights_file             
             )                                        
     
     stats = eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp)
@@ -169,6 +170,7 @@ if __name__ == '__main__':
     parser.add_argument('--solver', default='SVD', type=str, choices=['SVD', 'RANSAC'])
     parser.add_argument('--use_icp', default=False, type=str2bool)
     parser.add_argument('--save_npz', default=False, type=str2bool)
+    parser.add_argument('--fcgf_weights_file', type=str, default=None, help='file containing FCGF network weights')
     args = parser.parse_args()
 
     if args.use_icp:
@@ -191,6 +193,7 @@ if __name__ == '__main__':
     config.re_thre = 5
     config.te_thre = 60
     config.descriptor = 'fcgf'
+    config.fcgf_weights_file = args.fcgf_weights_file
 
     ## dynamically load the model from snapshot
     # module_file_path = f'snapshot/{args.chosen_snapshot}/model.py'
