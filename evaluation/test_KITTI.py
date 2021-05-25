@@ -14,11 +14,17 @@ from datasets.dataloader import get_dataloader
 from utils.pointcloud import make_point_cloud
 from evaluation.benchmark_utils import set_seed, icp_refine
 from utils.timer import Timer
+
+from dataloader.kitti_loader import KITTINMPairDataset, KITTIBalancedPairDataset
+from datasets.LidarFeatureExtractor import LidarFeatureExtractor
+from dataloader.base_loader import CollationFunctionFactory
+from torch.utils.data import DataLoader
+
 set_seed()
 
 from general.paths import kitti_dir, fcgf_weights_file
 
-def eval_KITTI_per_pair(model, dloader, config, use_icp):
+def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp):
     """
     Evaluate our model on KITTI testset.
     """
@@ -36,7 +42,8 @@ def eval_KITTI_per_pair(model, dloader, config, use_icp):
             # load data 
             #################################
             data_timer.tic()
-            corr, src_keypts, tgt_keypts, gt_trans, gt_labels = dloader_iter.next()
+            input_dict = dloader_iter.next()
+            corr, src_keypts, tgt_keypts, gt_trans, gt_labels = feature_extractor.process_batch(input_dict)
             corr, src_keypts, tgt_keypts, gt_trans, gt_labels = \
                     corr.cuda(), src_keypts.cuda(), tgt_keypts.cuda(), gt_trans.cuda(), gt_labels.cuda()
             data = {
@@ -113,20 +120,34 @@ def eval_KITTI_per_pair(model, dloader, config, use_icp):
     return stats
 
 def eval_KITTI(model, config, use_icp):
-    dset = KITTIDataset(root=kitti_dir,
-                    split='test',
-                    descriptor=config.descriptor,
-                    in_dim=config.in_dim,
-                    inlier_threshold=config.inlier_threshold,
-                    num_node=12000,
-                    use_mutual=config.use_mutual,
-                    augment_axis=0, 
-                    augment_rotation=0.00, 
-                    augment_translation=0.0,
-                    )
+    Dataset = KITTINMPairDataset
+    rank = 0
     num_workers = 1
-    dloader = get_dataloader(dset, batch_size=1, num_workers=num_workers, shuffle=False)
-    stats = eval_KITTI_per_pair(model, dloader, config, use_icp)
+    collation_fn = CollationFunctionFactory(concat_correspondences=False,
+                                            collation_type='collate_pair')                                            
+    test_set = Dataset(
+            'test',
+            transform=None, random_rotation=False, random_scale=False,
+            manual_seed=False, config=None, rank=rank)
+
+    dloader = DataLoader(test_set,
+						 batch_size=1,
+                         collate_fn=collation_fn,
+                         num_workers=num_workers,
+                         shuffle=False)
+
+    feature_extractor = LidarFeatureExtractor(
+            split='test',
+            in_dim=config.in_dim,
+            inlier_threshold=config.inlier_threshold,
+            num_node=12000, 
+            use_mutual=config.use_mutual,
+            augment_axis=0,
+            augment_rotation=0.0,
+            augment_translation=0.0,                
+            )                                        
+    
+    stats = eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp)
     logging.info(f"Max memory allicated: {torch.cuda.max_memory_allocated() / 1024 ** 3:.2f}GB")
 
     # pair level average 

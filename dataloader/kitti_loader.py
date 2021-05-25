@@ -316,6 +316,13 @@ class KITTIBalancedPairDataset(KITTIPairDataset):
                manual_seed=False,
                config=None,
                rank=None):
+      if config is None:
+        config=edict(
+            {'kitti_dir': os.path.split(kitti_dir)[0], 
+            'icp_cache_path': 'icp',
+            'voxel_size': 0.3, 
+            'positive_pair_search_voxel_size_multiplier': 1.5,
+            })
       self.icp_path = 'DUMMY'
       phase_sessions = {'train': [0,1,2,3,4,5], 'val': [6,7], 'test': [8,9,10]}      
       random_rotation = self.TEST_RANDOM_ROTATION
