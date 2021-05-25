@@ -23,6 +23,7 @@ from torch.utils.data import DataLoader
 import torch.multiprocessing as mp
 import torch.distributed as dist
 import os
+import time
 
 from general.paths import kitti_dir, fcgf_weights_file
 
@@ -116,15 +117,17 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
             stats[i, 10] = data_time
             stats[i, 11] = -1
 
-            if recall == 0:
-                from evaluation.benchmark_utils import rot_to_euler
-                R_gt, t_gt = gt_trans[0][:3, :3], gt_trans[0][:3, -1]
-                euler = rot_to_euler(R_gt.detach().cpu().numpy())
+            if rank==0:
+                print(f"{time.strftime('%m/%d %H:%M:%S')} Finished pair:{i}/{num_pair}", flush=True)
+                if recall == 0:
+                    from evaluation.benchmark_utils import rot_to_euler
+                    R_gt, t_gt = gt_trans[0][:3, :3], gt_trans[0][:3, -1]
+                    euler = rot_to_euler(R_gt.detach().cpu().numpy())
 
-                input_ir = float(torch.mean(gt_labels.float()))
-                input_i = int(torch.sum(gt_labels))
-                output_i = int(torch.sum(gt_labels[pred_labels > 0]))
-                if rank==0:
+                    input_ir = float(torch.mean(gt_labels.float()))
+                    input_i = int(torch.sum(gt_labels))
+                    output_i = int(torch.sum(gt_labels[pred_labels > 0]))
+
                     logging.info(f"Pair {i}, GT Rot: {euler[0]:.2f}, {euler[1]:.2f}, {euler[2]:.2f}, Trans: {t_gt[0]:.2f}, {t_gt[1]:.2f}, {t_gt[2]:.2f}, RE: {float(Re):.2f}, TE: {float(Te):.2f}")
                     logging.info((f"\tInput Inlier Ratio :{input_ir*100:.2f}%(#={input_i}), Output: IP={float(class_stats['precision'])*100:.2f}%(#={output_i}) IR={float(class_stats['recall'])*100:.2f}%"))
 
@@ -155,21 +158,22 @@ def eval_KITTI(model, config, use_icp, world_size, seed, rank, args):
     allpair_average = allpair_stats.mean(0)
     correct_pair_average = allpair_stats[allpair_stats[:, 0] == 1].mean(0)
 
-    report = torch.tensor([1.0, allpair_stats.shape[0], allpair_average[0], correct_pair_average[2], allpair_average[3], allpair_average[4], allpair_average[5], allpair_average[6], allpair_average[7], allpair_average[8], allpair_average[9], allpair_average[10]], device=torch.cuda.current_device())
+    report = torch.tensor([1.0, allpair_stats.shape[0], allpair_average[0], correct_pair_average[1], correct_pair_average[2], allpair_average[3], allpair_average[4], allpair_average[5], allpair_average[6], allpair_average[7], allpair_average[8], allpair_average[9], allpair_average[10]], device=torch.cuda.current_device())
     dist.all_reduce(report, op=dist.ReduceOp.SUM)
 
     count = report[0].item()
     allpair_stats_shape_0  = report[1].item()
     allpair_average_0      = report[2].item() / count    
-    correct_pair_average_2 = report[3].item() / count    
-    allpair_average_3      = report[4].item() / count    
-    allpair_average_4      = report[5].item() / count    
-    allpair_average_5      = report[6].item() / count    
-    allpair_average_6      = report[7].item() / count    
-    allpair_average_7      = report[8].item() / count    
-    allpair_average_8      = report[9].item() / count    
-    allpair_average_9      = report[10].item() / count    
-    allpair_average_10     = report[11].item() / count    
+    correct_pair_average_1 = report[3].item() / count    
+    correct_pair_average_2 = report[4].item() / count    
+    allpair_average_3      = report[5].item() / count    
+    allpair_average_4      = report[6].item() / count    
+    allpair_average_5      = report[7].item() / count    
+    allpair_average_6      = report[8].item() / count    
+    allpair_average_7      = report[9].item() / count    
+    allpair_average_8      = report[10].item() / count    
+    allpair_average_9      = report[11].item() / count    
+    allpair_average_10     = report[12].item() / count    
 
     if rank == 0:
         logging.info(f"*"*40)
@@ -206,6 +210,8 @@ def main():
     seed = 51
     world_size = torch.cuda.device_count()  
     print("%d GPUs are available" % world_size)
+
+    logging.info("Starting")
   
     if world_size == 1:
         train_parallel(0, world_size, seed, config, args)
