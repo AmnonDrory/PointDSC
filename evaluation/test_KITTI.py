@@ -16,6 +16,7 @@ from evaluation.benchmark_utils import set_seed, icp_refine
 from utils.timer import Timer
 
 from dataloader.kitti_loader import KITTINMPairDataset, KITTIBalancedPairDataset
+from dataloader.ApolloSouthbay_loader import ApolloSouthbayBalancedPairDataset
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader
@@ -220,7 +221,7 @@ def main():
 
 def make_test_loader(rank, world_size, seed):
 
-    Dataset = KITTIBalancedPairDataset # KITTINMPairDataset
+    Dataset = ApolloSouthbayBalancedPairDataset # KITTIBalancedPairDataset # KITTINMPairDataset
     num_workers = 1
 
     dset = Dataset('test',
