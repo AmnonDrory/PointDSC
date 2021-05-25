@@ -224,9 +224,16 @@ def make_test_loader(rank, world_size, seed):
     Dataset = ApolloSouthbayBalancedPairDataset # KITTIBalancedPairDataset # KITTINMPairDataset
     num_workers = 1
 
+    config=edict(
+            {'kitti_dir': os.path.split(kitti_dir)[0], 
+            'icp_cache_path': 'icp',
+            'voxel_size': 0.3, 
+            'positive_pair_search_voxel_size_multiplier': 1.5,
+            })
+    
     dset = Dataset('test',
                 transform=None, random_rotation=False, random_scale=False,
-                manual_seed=False, config=None, rank=rank)
+                manual_seed=False, config=config, rank=rank)
 
     sampler = torch.utils.data.distributed.DistributedSampler(
         dset,
