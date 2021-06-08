@@ -31,45 +31,26 @@ class Apollo_FCGF_utils():
         pass
 
     @staticmethod
-    def is_train_session(session_ind, subset):
+    def is_train_session(session_ind):
         session_path = Apollo_FCGF_utils.get_session_path(session_ind)
-        if subset == 'disjoint':
-            valid_sequences = ['MathildaAVE','BaylandsToSeafood','ColumbiaPark']   
-            is_ok = False
-            for seq in valid_sequences:
-                is_ok = is_ok or (seq in session_path)
-        else:
-            is_ok = True
-
-        return (("TrainData" in session_path) and is_ok)
+        return ("TrainData" in session_path)
 
     @staticmethod
-    def is_test_session(session_ind, subset):
+    def is_test_session(session_ind):
         session_path = Apollo_FCGF_utils.get_session_path(session_ind)
-        if subset == 'disjoint':
-            valid_sequences = ['HighWay237','SunnyvaleBigloop','SanJoseDowntown']
-            is_ok = False
-            for seq in valid_sequences:
-                is_ok = is_ok or (seq in session_path)
-        else:
-            is_ok = True
+        return ("Test" in session_path)
 
-        return (("Test" in session_path) and is_ok)
-
-    def is_validation_session(session_ind, subset):
-        if subset == 'disjoint':
-            return Apollo_FCGF_utils.is_train_session(session_ind, subset)
-        else:
-            return Apollo_FCGF_utils.is_test_session(session_ind, subset)
-
+    def is_validation_session(session_ind):
+        return Apollo_FCGF_utils.is_test_session(session_ind)
+    
     @staticmethod
-    def is_phase_session(session_ind, phase, subset):
+    def is_phase_session(session_ind, phase):
         if (phase == 'train'):
-            return Apollo_FCGF_utils.is_train_session(session_ind, subset)
+            return Apollo_FCGF_utils.is_train_session(session_ind)
         elif  (phase == 'val'):
-            return Apollo_FCGF_utils.is_validation_session(session_ind, subset)
+            return Apollo_FCGF_utils.is_validation_session(session_ind)
         elif  (phase == 'test'):
-            return Apollo_FCGF_utils.is_test_session(session_ind, subset)            
+            return Apollo_FCGF_utils.is_test_session(session_ind)            
         else:
             assert False, "unknown phase: " + phase
 
@@ -109,19 +90,15 @@ class Apollo_FCGF_utils():
         return np.asarray(pcd.points).astype(np.float32)
 
     @staticmethod
-    def get_pairs(session_ind, subset):
+    def get_pairs(session_ind):
         ses_path = Apollo_FCGF_utils.get_session_path(session_ind)
-        if subset == '10m':
-            pairs_file = ses_path + 'pairs/FCGF_poses_gt_for_DGR.txt'
-            with open(pairs_file, 'r') as fid:
-                lines = fid.read().splitlines()
-            pairs = []
-            for line in lines:
-                pairs.append([session_ind] + [float(a) for a in line.split()])
-        elif subset in ['balanced', 'disjoint']:
-            pairs_file = ses_path + 'pairs/poses_gt.balanced.DGR_format.txt'
-            raw_ds = pd.read_csv(pairs_file, sep=" ", header=0).values
-            pairs = np.hstack([session_ind*np.ones([raw_ds.shape[0],1]),raw_ds])            
+        pairs_file = ses_path + 'pairs/FCGF_poses_gt_for_DGR.txt'
+        with open(pairs_file, 'r') as fid:
+            lines = fid.read().splitlines()
+        pairs = []
+        for line in lines:
+            pairs.append([session_ind] + [float(a) for a in line.split()])
+
         return pairs
 
 class ApolloSouthbayPairDataset(PairDataset):
@@ -135,26 +112,27 @@ class ApolloSouthbayPairDataset(PairDataset):
   IS_ODOMETRY = True
 
   def prep_pairs_list(self):
+      if self.SUBSET == 'balanced':
+          BALANCED_SETS_DIR = './dataloader/balanced_sets/ApolloSouthbay/'
+          pairs_file = BALANCED_SETS_DIR + self.phase.replace('val','validation') + '.txt'
+          pairs = pd.read_csv(pairs_file, sep=" ", header=0).values
+          pairs_GT = pairs[:,:3+16]
+          return pairs_GT
+
       pairs_GT = []
       for session_ind in range(self.U.num_sessions()):
-          if not self.U.is_phase_session(session_ind, self.phase, self.SUBSET):
+          if not self.U.is_phase_session(session_ind, self.phase):
               continue
           self.U.init_session(session_ind)
 
-          cur_pairs_GT = self.U.get_pairs(session_ind, self.SUBSET)
+          cur_pairs_GT = self.U.get_pairs(session_ind)
 
           pairs_GT.append(cur_pairs_GT)
 
       pairs_GT = np.vstack(pairs_GT)
 
-      if (self.SUBSET != 'disjoint') and (self.phase in ['val', 'test']):
-          if self.SUBSET == '10m':
-              NUM_VALIDATION_SAMPLES = 210
-          elif self.SUBSET == 'balanced':
-              NUM_VALIDATION_SAMPLES = 300
-          else:
-              assert False, f"Unknown value for self.SUBSET : {self.SUBSET}"
-
+      if self.phase in ['val', 'test']:
+          NUM_VALIDATION_SAMPLES = 210
           N = pairs_GT.shape[0]            
           validation_inds = np.round(np.linspace(0, N-1, NUM_VALIDATION_SAMPLES)).astype(int)
           validation_mask = np.zeros([N], dtype=bool)
@@ -165,27 +143,6 @@ class ApolloSouthbayPairDataset(PairDataset):
               pairs_GT = pairs_GT[validation_mask,:]
           elif self.phase == 'test':
               pairs_GT = pairs_GT[test_mask,:]
-
-      if (self.SUBSET == 'disjoint') and (self.phase in ['val', 'train']):
-          NUM_VALIDATION_SAMPLES = 200
-
-          N = pairs_GT.shape[0]
-          validation_inds = np.round(np.linspace(0, N-1, NUM_VALIDATION_SAMPLES)).astype(int)
-          validation_mask = np.zeros([N], dtype=bool)
-          train_mask = np.ones([N], dtype=bool)
-          validation_mask[validation_inds] = True
-          train_mask[validation_inds] = False
-          if self.phase == 'val':
-              pairs_GT = pairs_GT[validation_mask,:]
-          elif self.phase == 'train':
-              pairs_GT = pairs_GT[train_mask,:]
-      
-      N = pairs_GT.shape[0]
-      if (self.SUBSET == 'disjoint') and (self.phase=='test'):
-          NUM_TEST_SAMPLES = 500
-          if NUM_TEST_SAMPLES < N:
-            keep_inds = np.round(np.linspace(0, N-1, NUM_TEST_SAMPLES)).astype(int)
-            pairs_GT = pairs_GT[keep_inds,:]
 
       return pairs_GT
 
@@ -253,11 +210,6 @@ class ApolloSouthbayPairDataset(PairDataset):
 
     # Get matches
     matches = get_matching_indices(pcd0, pcd1, trans, matching_search_voxel_size)
-    if len(matches) < 1000:
-      if phase == 'test':
-        return None
-      else:
-        raise ValueError(f"Insufficient matches in {drive}, {t0}, {t1}")
 
     # Get features
     npts0 = len(sel0)
@@ -292,9 +244,6 @@ class ApolloSouthbayNMPairDataset(ApolloSouthbayPairDataset):
 
 class ApolloSouthbayBalancedPairDataset(ApolloSouthbayPairDataset):
   SUBSET='balanced'  
-  
-class ApolloSouthbayDisjointPairDataset(ApolloSouthbayPairDataset):
-  SUBSET='disjoint'    
 
 if __name__ == "__main__":
   with open('config.pickle', 'rb') as fid:
