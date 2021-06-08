@@ -106,7 +106,7 @@ class LidarFeatureExtractor():
         if self.num_node != 'all' and N_tgt > self.num_node:
             tgt_sel_ind = np.random.choice(N_tgt, self.num_node, replace=False)
 
-        # AD OBSERVATION: extreme downsampling of clouds, from ~20K to 1K. 
+        # AD OBSERVATION: extreme downsampling of clouds, from ~20K to 1K (train) or 12K (test). 
         src_desc = src_features[src_sel_ind, :]
         tgt_desc = tgt_features[tgt_sel_ind, :]
         src_keypts = src_keypts[src_sel_ind, :]

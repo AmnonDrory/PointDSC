@@ -19,8 +19,7 @@ dataset_str_mapping = {d.__name__: d for d in ALL_DATASETS}
 def make_data_loader(config, phase, batch_size, rank=0, world_size=1, seed=0, num_workers=0, shuffle=None):
   assert phase in ['train', 'trainval', 'val', 'test']
   if shuffle is None:
-    #shuffle = phase != 'test'
-    shuffle = False # AD UNDO
+    shuffle = phase != 'test'
 
   if config.dataset not in dataset_str_mapping.keys():
     logging.error(f'Dataset {config.dataset}, does not exists in ' +

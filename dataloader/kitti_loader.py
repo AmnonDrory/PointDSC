@@ -324,23 +324,19 @@ class KITTIBalancedPairDataset(KITTIPairDataset):
             'positive_pair_search_voxel_size_multiplier': 1.5,
             })
       self.icp_path = 'DUMMY'
-      phase_sessions = {'train': [0,1,2,3,4,5], 'val': [6,7], 'test': [8,9,10]}      
-      random_rotation = self.TEST_RANDOM_ROTATION
       self.root = root = os.path.join(config.kitti_dir, 'dataset')      
+      random_rotation = self.TEST_RANDOM_ROTATION
       PairDataset.__init__(self, phase, transform, random_rotation, random_scale,
-                         manual_seed, config, rank)
-      pairs_list = []
-      for session_ind in phase_sessions[phase]:
-        sess_path = root + '/sequences/%02d/' % session_ind
-        pairs_file = sess_path + 'poses_gt.balanced.DGR_format.txt'
-        DS_raw = pd.read_csv(pairs_file, sep=" ", header=None).values
-        DS = np.hstack([session_ind*np.ones([DS_raw.shape[0],1]), DS_raw])
-        pairs_list.append(DS) 
-        for pair in DS:
-          self.files.append( (int(session_ind), int(pair[1]), int(pair[2])) )
-          key = '%d_%d_%d' % (session_ind, pair[1], pair[2])
-          kitti_icp_cache[key] = pair[3:].reshape([4,4])
-      self.pairs = np.vstack(pairs_list)
+                          manual_seed, config, rank)      
+
+      BALANCED_SETS_DIR = './dataloader/balanced_sets/KITTI/'
+      pairs_file = BALANCED_SETS_DIR + phase.replace('val','validation') + '.txt'
+      pairs = pd.read_csv(pairs_file, sep=" ", header=0).values
+      self.pairs = pairs[:,:3+16]
+      for pair in self.pairs:
+        self.files.append( (int(pair[0]), int(pair[1]), int(pair[2])) )
+
+      
       
 
 
