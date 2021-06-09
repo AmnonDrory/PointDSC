@@ -16,6 +16,14 @@ from util.pointcloud import get_matching_indices, make_open3d_point_cloud
 from general.paths import kitti_dir, fcgf_weights_file
 from easydict import EasyDict as edict
 
+computer_name = os.uname()[1]
+if computer_name in ['ad-2021']:
+  balanced_sets_base_dir = '/home/ad/old_drive/home/ad/PycharmProjects/BalancedDatasetGenerator/output/balanced_sets/'
+elif computer_name in ['deep3d']:
+  balanced_sets_base_dir = '/home/amnon/BalancedDatasetGenerator/output/balanced_sets/'
+else:
+    assert False
+
 kitti_cache = {}
 kitti_icp_cache = {}
 
@@ -327,7 +335,7 @@ class KITTIBalancedPairDataset(KITTIPairDataset):
       PairDataset.__init__(self, phase, transform, random_rotation, random_scale,
                           manual_seed, config, rank)      
 
-      BALANCED_SETS_DIR = './dataloader/balanced_sets/KITTI/'
+      BALANCED_SETS_DIR = balanced_sets_base_dir + 'KITTI/'
       pairs_file = BALANCED_SETS_DIR + phase.replace('val','validation') + '.txt'
       pairs = pd.read_csv(pairs_file, sep=" ", header=0).values
       self.pairs = pairs[:,:3+16]
