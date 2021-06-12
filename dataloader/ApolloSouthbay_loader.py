@@ -12,16 +12,7 @@ import pandas as pd
 from dataloader.base_loader import *
 from dataloader.transforms import *
 from util.pointcloud import get_matching_indices, make_open3d_point_cloud
-
-computer_name = os.uname()[1]
-if computer_name in ['ad-2021']:
-  apollo_southbay_dir = '/home/ad/old_drive/data/apollo_subsets/apollo_meta/'
-  balanced_sets_base_dir = '/home/ad/old_drive/home/ad/PycharmProjects/BalancedDatasetGenerator/output/balanced_sets/'
-elif computer_name in ['deep3d']:
-  apollo_southbay_dir = '/data/amnon/datasets/apollo/'  
-  balanced_sets_base_dir = '/home/amnon/BalancedDatasetGenerator/output/balanced_sets/'
-else:
-    assert False
+from general.paths import apollo_southbay_dir, balanced_sets_base_dir
 
 
 class Apollo_FCGF_utils():

@@ -13,16 +13,15 @@ from dataloader.base_loader import *
 from dataloader.transforms import *
 from util.pointcloud import get_matching_indices, make_open3d_point_cloud
 
-from general.paths import kitti_dir, fcgf_weights_file
+from general.paths import kitti_dir, balanced_sets_base_dir
 from easydict import EasyDict as edict
 
-computer_name = os.uname()[1]
-if computer_name in ['ad-2021']:
-  balanced_sets_base_dir = '/home/ad/old_drive/home/ad/PycharmProjects/BalancedDatasetGenerator/output/balanced_sets/'
-elif computer_name in ['deep3d']:
-  balanced_sets_base_dir = '/home/amnon/BalancedDatasetGenerator/output/balanced_sets/'
-else:
-    assert False
+default_config = edict(
+  {'kitti_dir': os.path.split(kitti_dir)[0], 
+  'icp_cache_path': 'icp',
+  'voxel_size': 0.3, 
+  'positive_pair_search_voxel_size_multiplier': 1.5,
+  })
 
 kitti_cache = {}
 kitti_icp_cache = {}
@@ -260,12 +259,7 @@ class KITTINMPairDataset(KITTIPairDataset):
                rank=None):
     
     if config is None:
-      config=edict(
-            {'kitti_dir': os.path.split(kitti_dir)[0], 
-            'icp_cache_path': 'icp',
-            'voxel_size': 0.3, 
-            'positive_pair_search_voxel_size_multiplier': 1.5,
-            })
+      config=default_config
     self.root = root = os.path.join(config.kitti_dir, 'dataset')
     self.icp_path = os.path.join(config.kitti_dir, config.icp_cache_path)
     try:
@@ -323,12 +317,7 @@ class KITTIBalancedPairDataset(KITTIPairDataset):
                config=None,
                rank=None):
       if config is None:
-        config=edict(
-            {'kitti_dir': os.path.split(kitti_dir)[0], 
-            'icp_cache_path': 'icp',
-            'voxel_size': 0.3, 
-            'positive_pair_search_voxel_size_multiplier': 1.5,
-            })
+        config=default_config
       self.icp_path = 'DUMMY'
       self.root = root = os.path.join(config.kitti_dir, 'dataset')      
       random_rotation = self.TEST_RANDOM_ROTATION

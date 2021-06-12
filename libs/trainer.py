@@ -81,7 +81,8 @@ class Trainer(object):
                 self._snapshot(epoch + 1)
 
         # finish all epoch
-        print("Training finish!... save training results")
+        if self.rank == 0:
+            print(f'{time.strftime("%m/%d %H:%M:%S")} Training finish!... save training results')
 
     def train_epoch(self, epoch):
         # create meters and timers

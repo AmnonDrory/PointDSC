@@ -11,7 +11,7 @@ from dataloader.ApolloSouthbay_loader import *
 ALL_DATASETS = [
     ThreeDMatchPairDataset07, ThreeDMatchPairDataset05, ThreeDMatchPairDataset03,
     ThreeDMatchTrajectoryDataset, KITTIPairDataset, KITTINMPairDataset, ApolloSouthbayNMPairDataset,
-    KITTIBalancedPairDataset, ApolloSouthbayBalancedPairDataset, ApolloSouthbayDisjointPairDataset
+    KITTIBalancedPairDataset, ApolloSouthbayBalancedPairDataset
 ]
 dataset_str_mapping = {d.__name__: d for d in ALL_DATASETS}
 

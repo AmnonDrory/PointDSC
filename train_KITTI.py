@@ -12,6 +12,7 @@ from models.PointDSC import PointDSC
 from torch import optim
 
 from dataloader.kitti_loader import KITTINMPairDataset, KITTIBalancedPairDataset
+from dataloader.NuScenes_loader import NuScenesBostonDataset
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader
@@ -56,7 +57,7 @@ def main():
         mp.spawn(train_parallel, nprocs=world_size, args=(world_size,seed, config))  
 
 def make_loader(phase, PointDSC_config, rank, world_size, seed):
-    Dataset = KITTIBalancedPairDataset # KITTINMPairDataset
+    Dataset = NuScenesBostonDataset # KITTIBalancedPairDataset
     shuffle = (phase == 'train')
 
     dset = Dataset(phase,
