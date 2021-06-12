@@ -16,7 +16,7 @@ default_config = edict(
     'positive_pair_search_voxel_size_multiplier': 1.5,
   })
 
-def LyftLEVEL5BalancedPairDataset(PairDataset):
+class LyftLEVEL5BalancedPairDataset(PairDataset):
     def __init__(self, 
                     phase,
                     transform=None,

@@ -16,7 +16,7 @@ default_config = edict(
     'positive_pair_search_voxel_size_multiplier': 1.5,
   })
 
-def NuScenesBalancedPairDataset(PairDataset):
+class NuScenesBalancedPairDataset(PairDataset):
     LOCATION = None
     def __init__(self, 
                     phase,
@@ -108,8 +108,8 @@ def NuScenesBalancedPairDataset(PairDataset):
         return len(self.U.pairs)
 
 
-def NuScenesBostonDataset(NuScenesBalancedPairDataset):
+class NuScenesBostonDataset(NuScenesBalancedPairDataset):
     LOCATION = 'boston'
 
-def NuScenesSingaporeDataset(NuScenesBalancedPairDataset):
+class NuScenesSingaporeDataset(NuScenesBalancedPairDataset):
     LOCATION = 'singapore'    
