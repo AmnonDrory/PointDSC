@@ -38,7 +38,7 @@ net_arg.add_argument('--k', type=int, default=40, help='size of local neighborho
 
 # Loss configurations
 loss_arg = add_argument_group('Loss')
-loss_arg.add_argument('--evaluate_interval', type=int, default=1)
+loss_arg.add_argument('--evaluate_interval', type=int, default=10)
 loss_arg.add_argument('--balanced', type=str2bool, default=False)
 loss_arg.add_argument('--weight_classification', type=float, default=1.0)
 loss_arg.add_argument('--weight_spectralmatching', type=float, default=1.0)
