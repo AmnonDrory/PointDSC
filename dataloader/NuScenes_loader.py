@@ -33,7 +33,7 @@ class NuScenesBalancedPairDataset(PairDataset):
         PairDataset.__init__(self, phase, transform, random_rotation, random_scale,
                               manual_seed, config, rank)                          
 
-        self.U = NuScenes_balanced(self.LOCATION, phase)
+        self.U = NuScenes_balanced(self.LOCATION, phase.replace('val','validation'))
 
     def __getitem__(self, idx):
 

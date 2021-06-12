@@ -32,7 +32,7 @@ class LyftLEVEL5BalancedPairDataset(PairDataset):
         PairDataset.__init__(self, phase, transform, random_rotation, random_scale,
                               manual_seed, config, rank)                          
 
-        self.U = LyftLEVEL5_balanced(phase)
+        self.U = LyftLEVEL5_balanced(phase.replace('val','validation'))
 
     def __getitem__(self, idx):
 
@@ -105,4 +105,3 @@ class LyftLEVEL5BalancedPairDataset(PairDataset):
 
     def __len__(self):
         return len(self.U.pairs)
-
