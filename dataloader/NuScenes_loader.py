@@ -40,7 +40,7 @@ class NuScenesBalancedPairDataset(PairDataset):
         drive = self.U.pairs[idx, 0]
         t0 = self.U.pairs[idx, 1]
         t1 = self.U.pairs[idx, 2]
-        xyz0, xyz1, M2 = self.U.get_pair(idx)
+        M2, xyz0, xyz1= self.U.get_pair(idx)
 
         if self.random_rotation:
             T0 = sample_almost_planar_rotation(self.randg)
