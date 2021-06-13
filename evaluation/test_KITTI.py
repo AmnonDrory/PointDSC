@@ -42,12 +42,13 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
     """
     num_pair = dloader.__len__()
     # 0.success, 1.RE, 2.TE, 3.input inlier number, 4.input inlier ratio,  5. output inlier number 
-    # 6. output inlier precision, 7. output inlier recall, 8. output inlier F1 score 9. model_time, 10. data_time 11. scene_ind
+    # 6. output inlier precision, 7. output inlier recall, 8. output inlier F1 score 9. model_time, 10. data_time 11. icp_time
     stats = np.zeros([num_pair, 12])
     dloader_iter = dloader.__iter__()
     class_loss = ClassificationLoss()
     evaluate_metric = TransformationLoss(re_thre=config.re_thre, te_thre=config.te_thre)
     data_timer, model_timer = Timer(), Timer()
+    icp_timer = Timer()
     with torch.no_grad():
         for i in range(num_pair):
             #################################
@@ -95,11 +96,14 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
                 pred_labels[0, inliers[:, 0]] = 1
                 pred_trans = torch.eye(4)[None].to(src_keypts.device)
                 pred_trans[:, :4, :4] = torch.from_numpy(reg_result.transformation)
-  
+            
+            model_time = model_timer.toc()
+            icp_timer.tic()
             if use_icp:
                 pred_trans = icp_refine(src_keypts, tgt_keypts, pred_trans)
-
-            model_time = model_timer.toc()
+            
+            icp_time = icp_timer.toc()
+            
             class_stats = class_loss(pred_labels, gt_labels)
             loss, recall, Re, Te, rmse = evaluate_metric(pred_trans, gt_trans, src_keypts, tgt_keypts, pred_labels)
             pred_trans = pred_trans[0]
@@ -116,7 +120,8 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
             stats[i, 8] = float(class_stats['f1'])                   # output inlier f1 score
             stats[i, 9] = model_time
             stats[i, 10] = data_time
-            stats[i, 11] = -1
+            stats[i, 11] = icp_time
+
 
             if rank==0:
                 print(f"{time.strftime('%m/%d %H:%M:%S')} Finished pair:{i}/{num_pair}", flush=True)
@@ -151,6 +156,7 @@ def eval_KITTI(model, config, use_icp, world_size, seed, rank, args):
             )                                        
     
     stats = eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args, rank)
+
     if rank == 0:
         logging.info(f"Max memory allocated: {torch.cuda.max_memory_allocated() / 1024 ** 3:.2f}GB")
 
@@ -159,7 +165,7 @@ def eval_KITTI(model, config, use_icp, world_size, seed, rank, args):
     allpair_average = allpair_stats.mean(0)
     correct_pair_average = allpair_stats[allpair_stats[:, 0] == 1].mean(0)
 
-    report = torch.tensor([1.0, allpair_stats.shape[0], allpair_average[0], correct_pair_average[1], correct_pair_average[2], allpair_average[3], allpair_average[4], allpair_average[5], allpair_average[6], allpair_average[7], allpair_average[8], allpair_average[9], allpair_average[10]], device=torch.cuda.current_device())
+    report = torch.tensor([1.0, allpair_stats.shape[0], allpair_average[0], correct_pair_average[1], correct_pair_average[2], allpair_average[3], allpair_average[4], allpair_average[5], allpair_average[6], allpair_average[7], allpair_average[8], allpair_average[9], allpair_average[10], allpair_average[11] ], device=torch.cuda.current_device())
     dist.all_reduce(report, op=dist.ReduceOp.SUM)
 
     count = report[0].item()
@@ -175,13 +181,14 @@ def eval_KITTI(model, config, use_icp, world_size, seed, rank, args):
     allpair_average_8      = report[10].item() / count    
     allpair_average_9      = report[11].item() / count    
     allpair_average_10     = report[12].item() / count    
+    allpair_average_11     = report[13].item() / count    
 
     if rank == 0:
         logging.info(f"*"*40)
         logging.info(f"All {allpair_stats_shape_0} pairs, Mean Success Rate={allpair_average_0*100:.2f}%, Mean Re={correct_pair_average_1:.2f}, Mean Te={correct_pair_average_2:.2f}")
         logging.info(f"\tInput:  Mean Inlier Num={allpair_average_3:.2f}(ratio={allpair_average_4*100:.2f}%)")
         logging.info(f"\tOutput: Mean Inlier Num={allpair_average_5:.2f}(precision={allpair_average_6*100:.2f}%, recall={allpair_average_7*100:.2f}%, f1={allpair_average_8*100:.2f}%)")
-        logging.info(f"\tMean model time: {allpair_average_9:.2f}s, Mean data time: {allpair_average_10:.2f}s")
+        logging.info(f"\tMean model time: {allpair_average_9:.2f}s, Mean icp time: {allpair_average_11:.2f}s, Mean data time: {allpair_average_10:.2f}s")
 
     return allpair_stats
 
