@@ -1,5 +1,5 @@
 from dataloader.generic_balanced_loader import GenericBalancedLoader
-from dataloader.NuScenes_balanced import NuScenes_balanced
+from dataloader.balanced.NuScenes import NuScenes_balanced
 
 class NuScenesBalancedPairDataset(GenericBalancedLoader):
     LOCATION = None

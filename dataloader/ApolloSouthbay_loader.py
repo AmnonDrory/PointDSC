@@ -12,7 +12,7 @@ import pandas as pd
 from dataloader.base_loader import *
 from dataloader.transforms import *
 from util.pointcloud import get_matching_indices, make_open3d_point_cloud
-from dataloader.paths import apollo_southbay_dir, balanced_sets_base_dir
+from dataloader.paths import ApolloSouthbay_dir, balanced_sets_base_dir
 
 
 class Apollo_FCGF_utils():
@@ -47,7 +47,7 @@ class Apollo_FCGF_utils():
 
     @staticmethod
     def dataset_directory():
-        return apollo_southbay_dir
+        return ApolloSouthbay_dir
 
     @staticmethod
     def get_all_session_paths():
@@ -73,7 +73,7 @@ class Apollo_FCGF_utils():
         session_path = Apollo_FCGF_utils.get_session_path(session_ind)
         filename = session_path + "pcds/%d.pcd" % index
         if not os.path.isfile(filename):
-            source = filename.replace(apollo_southbay_dir,'amnon@Geoffrey:/mnt3/dataset/apollo/')
+            source = filename.replace(ApolloSouthbay_dir,'amnon@Geoffrey:/mnt3/dataset/apollo/')
             cmd = 'rsync -avzh %s %s' % (source, filename)
             print(cmd)
         assert os.path.isfile(filename), "Error: could not find file " + filename

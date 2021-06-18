@@ -1,5 +1,5 @@
 from dataloader.generic_balanced_loader import GenericBalancedLoader
-from dataloader.LyftLEVEL5_balanced import LyftLEVEL5_balanced
+from dataloader.balanced.LyftLEVEL5 import LyftLEVEL5_balanced
 
 class LyftLEVEL5BalancedPairDataset(GenericBalancedLoader):
     def __init__(   self, 
