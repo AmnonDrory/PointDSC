@@ -12,7 +12,7 @@ from models.PointDSC import PointDSC
 from torch import optim
 
 from dataloader.kitti_loader import KITTINMPairDataset, KITTIBalancedPairDataset
-from dataloader.NuScenes_loader import NuScenesBostonDataset
+from dataloader.NuScenes_balanced_loader import NuScenesBostonDataset
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader
