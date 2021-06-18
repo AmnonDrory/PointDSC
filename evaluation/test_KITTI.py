@@ -15,8 +15,9 @@ from utils.pointcloud import make_point_cloud
 from evaluation.benchmark_utils import set_seed, icp_refine
 from utils.timer import Timer
 
-from dataloader.kitti_loader import KITTINMPairDataset, KITTIBalancedPairDataset
-from dataloader.ApolloSouthbay_loader import ApolloSouthbayBalancedPairDataset
+from dataloader.kitti_loader import KITTINMPairDataset
+from dataloader.KITTI_balanced_loader import KITTIBalancedPairDataset
+from dataloader.ApolloSouthbay_balanced_loader import ApolloSouthbayBalancedPairDataset
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader

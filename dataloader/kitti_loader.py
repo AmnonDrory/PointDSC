@@ -151,35 +151,32 @@ class KITTIPairDataset(PairDataset):
 
     key = '%d_%d_%d' % (drive, t0, t1)
     filename = self.icp_path + '/' + key + '.npy'
-    try:
-      ind = np.where((self.pairs[:,0] == drive) & (self.pairs[:,1] == t0) & (self.pairs[:,2] == t1))[0]
-      M2 = self.pairs[ind,3:].reshape([4,4])
-    except:
-      if key not in kitti_icp_cache:
-        if not os.path.exists(filename):
-          # work on the downsampled xyzs, 0.05m == 5cm
-          _, sel0 = ME.utils.sparse_quantize(xyz0 / 0.05, return_index=True)
-          _, sel1 = ME.utils.sparse_quantize(xyz1 / 0.05, return_index=True)
 
-          M = (self.velo2cam @ positions[0].T @ np.linalg.inv(positions[1].T)
-              @ np.linalg.inv(self.velo2cam)).T
-          xyz0_t = self.apply_transform(xyz0[sel0], M)
-          pcd0 = make_open3d_point_cloud(xyz0_t)
-          pcd1 = make_open3d_point_cloud(xyz1[sel1])
-          reg = o3d.registration.registration_icp(pcd0, pcd1, 0.2, np.eye(4),
-                                    o3d.registration.TransformationEstimationPointToPoint(),
-                                    o3d.registration.ICPConvergenceCriteria(max_iteration=200))
-          pcd0.transform(reg.transformation)
-          # pcd0.transform(M2) or self.apply_transform(xyz0, M2)
-          M2 = M @ reg.transformation
-          # o3d.draw_geometries([pcd0, pcd1])
-          # write to a file
-          np.save(filename, M2)
-        else:
-          M2 = np.load(filename)
-        kitti_icp_cache[key] = M2
+    if key not in kitti_icp_cache:
+      if not os.path.exists(filename):
+        # work on the downsampled xyzs, 0.05m == 5cm
+        _, sel0 = ME.utils.sparse_quantize(xyz0 / 0.05, return_index=True)
+        _, sel1 = ME.utils.sparse_quantize(xyz1 / 0.05, return_index=True)
+
+        M = (self.velo2cam @ positions[0].T @ np.linalg.inv(positions[1].T)
+            @ np.linalg.inv(self.velo2cam)).T
+        xyz0_t = self.apply_transform(xyz0[sel0], M)
+        pcd0 = make_open3d_point_cloud(xyz0_t)
+        pcd1 = make_open3d_point_cloud(xyz1[sel1])
+        reg = o3d.registration.registration_icp(pcd0, pcd1, 0.2, np.eye(4),
+                                  o3d.registration.TransformationEstimationPointToPoint(),
+                                  o3d.registration.ICPConvergenceCriteria(max_iteration=200))
+        pcd0.transform(reg.transformation)
+        # pcd0.transform(M2) or self.apply_transform(xyz0, M2)
+        M2 = M @ reg.transformation
+        # o3d.draw_geometries([pcd0, pcd1])
+        # write to a file
+        np.save(filename, M2)
       else:
-        M2 = kitti_icp_cache[key]
+        M2 = np.load(filename)
+      kitti_icp_cache[key] = M2
+    else:
+      M2 = kitti_icp_cache[key]
 
     if self.random_rotation:
       T0 = sample_almost_planar_rotation(self.randg)
@@ -213,6 +210,8 @@ class KITTIPairDataset(PairDataset):
 
     # Get matches
     matches = get_matching_indices(pcd0, pcd1, trans, matching_search_voxel_size)
+    if len(matches) < 1000:
+      raise ValueError(f"Insufficient matches in {drive}, {t0}, {t1}")
 
     # Get features
     npts0 = len(sel0)
@@ -306,33 +305,3 @@ class KITTINMPairDataset(KITTIPairDataset):
     ]:
       if item in self.files:
         self.files.pop(self.files.index(item))
-
-class KITTIBalancedPairDataset(KITTIPairDataset):
-    def __init__(self,
-               phase,
-               transform=None,
-               random_rotation=True,
-               random_scale=True,
-               manual_seed=False,
-               config=None,
-               rank=None):
-      if config is None:
-        config=default_config
-      self.icp_path = 'DUMMY'
-      self.root = root = os.path.join(config.kitti_dir, 'dataset')      
-      random_rotation = self.TEST_RANDOM_ROTATION
-      PairDataset.__init__(self, phase, transform, random_rotation, random_scale,
-                          manual_seed, config, rank)      
-
-      BALANCED_SETS_DIR = balanced_sets_base_dir + 'KITTI/'
-      pairs_file = BALANCED_SETS_DIR + phase.replace('val','validation') + '.txt'
-      pairs = pd.read_csv(pairs_file, sep=" ", header=0).values
-      self.pairs = pairs[:,:3+16]
-      for pair in self.pairs:
-        self.files.append( (int(pair[0]), int(pair[1]), int(pair[2])) )
-
-      
-      
-
-
-            
