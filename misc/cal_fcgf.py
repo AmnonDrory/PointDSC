@@ -7,7 +7,7 @@ import MinkowskiEngine as ME
 from utils.pointcloud import make_point_cloud
 from misc.fcgf import ResUNetBN2C as FCGF
 
-from general.paths import kitti_dir, fcgf_weights_file
+from dataloader.paths import kitti_dir, fcgf_weights_file
 
 def extract_features(model,
                      xyz,

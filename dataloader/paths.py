@@ -16,8 +16,3 @@ elif computer_name in ['deep3d']:
   balanced_sets_base_dir = '/home/amnon/BalancedDatasetGenerator/output/balanced_sets/'  
   LyftLEVEL5_dir =  '/data/amnon/datasets/LyftLEVEL5'
   NuScenes_dir =  '/data/amnon/datasets/NuScenes'
-else:
-  kitti_dir = None
-  fcgf_weights_file = None
-
-from general.paths import kitti_dir, fcgf_weights_file

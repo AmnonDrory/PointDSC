@@ -12,7 +12,7 @@ import pandas as pd
 from dataloader.base_loader import *
 from dataloader.transforms import *
 from util.pointcloud import get_matching_indices, make_open3d_point_cloud
-from general.paths import apollo_southbay_dir, balanced_sets_base_dir
+from dataloader.paths import apollo_southbay_dir, balanced_sets_base_dir
 
 
 class Apollo_FCGF_utils():

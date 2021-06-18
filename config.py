@@ -2,7 +2,7 @@ import argparse
 import time
 import os
 
-from general.paths import kitti_dir, fcgf_weights_file
+from dataloader.paths import kitti_dir, fcgf_weights_file
 
 arg_lists = []
 parser = argparse.ArgumentParser()

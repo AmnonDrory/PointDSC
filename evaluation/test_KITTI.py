@@ -26,7 +26,7 @@ import torch.distributed as dist
 import os
 import time
 
-from general.paths import kitti_dir, fcgf_weights_file
+from dataloader.paths import kitti_dir, fcgf_weights_file
 
 ch = logging.StreamHandler(sys.stdout)
 logging.getLogger().setLevel(logging.INFO)

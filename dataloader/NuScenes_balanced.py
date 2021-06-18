@@ -11,7 +11,7 @@ from nuscenes.utils.data_classes import LidarPointCloud, Quaternion
 from nuscenes.utils.geometry_utils import transform_matrix
 from nuscenes.utils.splits import train as train_split, val as val_split, test as test_split
 
-from general.paths import NuScenes_dir, balanced_sets_base_dir
+from dataloader.paths import NuScenes_dir, balanced_sets_base_dir
 
 DATASET_ROOT = NuScenes_dir
 BALANCED_SETS_PATH = balanced_sets_base_dir

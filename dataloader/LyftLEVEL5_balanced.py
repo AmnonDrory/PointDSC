@@ -10,7 +10,7 @@ from lyft_dataset_sdk.lyftdataset import LyftDataset
 from lyft_dataset_sdk.utils.data_classes import LidarPointCloud, Quaternion
 from lyft_dataset_sdk.utils.geometry_utils import transform_matrix
 
-from general.paths import LyftLEVEL5_dir, balanced_sets_base_dir
+from dataloader.paths import LyftLEVEL5_dir, balanced_sets_base_dir
 
 DATASET_ROOT = LyftLEVEL5_dir
 BALANCED_SETS_PATH = balanced_sets_base_dir

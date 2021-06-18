@@ -13,7 +13,7 @@ from dataloader.base_loader import *
 from dataloader.transforms import *
 from util.pointcloud import get_matching_indices, make_open3d_point_cloud
 
-from general.paths import kitti_dir, balanced_sets_base_dir
+from dataloader.paths import kitti_dir, balanced_sets_base_dir
 from easydict import EasyDict as edict
 
 default_config = edict(
