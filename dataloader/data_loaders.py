@@ -6,12 +6,16 @@
 # - Christopher Choy, JunYoung Gwak, Silvio Savarese, 4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural Networks, CVPR 2019
 from dataloader.threedmatch_loader import *
 from dataloader.kitti_loader import *
+from dataloader.KITTI_balanced_loader import *
 from dataloader.ApolloSouthbay_balanced_loader import *
+from dataloader.NuScenes_balanced_loader import *
+from dataloader.LyftLEVEL5_balanced_loader import *
 
 ALL_DATASETS = [
     ThreeDMatchPairDataset07, ThreeDMatchPairDataset05, ThreeDMatchPairDataset03,
     ThreeDMatchTrajectoryDataset, KITTIPairDataset, KITTINMPairDataset, 
-    KITTIBalancedPairDataset, ApolloSouthbayBalancedPairDataset
+    KITTIBalancedPairDataset, ApolloSouthbayBalancedPairDataset, LyftLEVEL5BalancedPairDataset,
+    NuScenesBostonDataset, NuScenesSingaporeDataset
 ]
 dataset_str_mapping = {d.__name__: d for d in ALL_DATASETS}
 
