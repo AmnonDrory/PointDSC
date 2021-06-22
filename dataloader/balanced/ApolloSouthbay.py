@@ -2,12 +2,14 @@ import numpy as np
 import open3d as o3d
 import os
 import pandas as pd
-from dataloader.paths import ApolloSouthbay_dir, balanced_sets_base_dir
+from dataloader.paths import ApolloSouthbay_dir, balanced_sets_base_dir, cache_dir
 
 ORIGINAL_DATASET_PATH = ApolloSouthbay_dir
 BALANCED_SETS_PATH = balanced_sets_base_dir
+CACHE_DIR = cache_dir # set to None to avoid caching point-clouds
 
 class Apollo_utils():
+
 
     @staticmethod
     def dataset_directory():
@@ -28,12 +30,15 @@ class Apollo_utils():
         return session_paths[session_ind]
 
     @staticmethod
-    def load_PC(session_ind, index): 
+    def load_PC(session_ind, index, cache_file=None): 
         session_path = Apollo_utils.get_session_path(session_ind)
         filename = session_path + "pcds/%d.pcd" % index
         assert os.path.isfile(filename), "Error: could not find file " + filename
         pcd = o3d.io.read_point_cloud(filename)
-        return np.asarray(pcd.points)
+        cloud = np.asarray(pcd.points)
+        if cache_file is not None:
+            np.save(cache_file, cloud)
+        return cloud
 
     
 class ApolloSouthbay_balanced:
@@ -41,10 +46,40 @@ class ApolloSouthbay_balanced:
         assert phase in ['train', 'validation', 'test']
         self.name = 'ApolloSouthbay'
         self.time_step = 0.1 # seconds between consecutive frames
-        self.phase = phase
-        self.U = Apollo_utils()                
+        self.phase = phase                        
         pairs_file = BALANCED_SETS_PATH + '/' + self.name + '/' + phase + '.txt'
         self.pairs = pd.read_csv(pairs_file, sep=" ", header=0).values                
+		
+        self.init_cache_dir()
+
+        if not self.fully_cached:
+            self.U = Apollo_utils()
+
+    def init_cache_dir(self):
+
+        if CACHE_DIR is None:
+            self.cache_dir = None        
+            self.cached_files = []
+            self.fully_cached = False
+            return 
+
+        self.cache_dir = CACHE_DIR + '/' + self.name + '/' + self.phase + '/'
+        if not os.path.isdir(self.cache_dir):
+            os.makedirs(self.cache_dir)
+
+        cache_files_raw = glob(self.cache_dir + '*.npy')        
+        cache_files = [os.path.split(f)[-1] for f in cache_files_raw]
+        
+        self.fully_cached = True
+        for pair in self.pairs:
+            cache_file_src = '%d_%d.npy' % (pair[0], pair[1])
+            if not cache_file_src in cache_files:
+                self.fully_cached = False
+                break
+            code_tgt = '%d_%d.npy' % (pair[0], pair[2])
+            if not code_tgt in cache_files:
+                self.fully_cached = False
+                break
 
     def get_pair(self, ind):        
         pair = self.pairs[ind]        
@@ -52,7 +87,21 @@ class ApolloSouthbay_balanced:
         src_ind = int(pair[1])
         tgt_ind = int(pair[2])
         mot = pair[3:(3+16)].reshape([4,4])
-        self.U.init_session(session_ind)
-        A = self.U.load_PC(session_ind, src_ind)
-        B = self.U.load_PC(session_ind, tgt_ind)
+        
+        if self.cache_dir is None:            
+            A = self.U.load_PC(session_ind, src_ind)            
+            B = self.U.load_PC(session_ind, tgt_ind)
+        else:
+            cache_file_src = self.cache_dir + '%d_%d.npy' % (session_ind, src_ind)
+            if os.path.isfile(cache_file_src):
+                A = np.load(cache_file_src)
+            else:
+                A = self.U.load_PC(session_ind, src_ind, cache_file_src)
+            
+            cache_file_tgt = self.cache_dir + '%d_%d.npy' % (session_ind, tgt_ind)
+            if os.path.isfile(cache_file_tgt):
+                B = np.load(cache_file_tgt)
+            else:            
+                B = self.U.load_PC(session_ind, tgt_ind, cache_file_tgt)
+
         return mot, A, B

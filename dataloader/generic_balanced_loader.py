@@ -1,14 +1,14 @@
 import numpy as np
+from easydict import EasyDict as edict
+import copy
 
 from dataloader.base_loader import *
 from dataloader.transforms import *
 from util.pointcloud import get_matching_indices, make_open3d_point_cloud
 
-from easydict import EasyDict as edict
-
 default_config = edict(
   { 'voxel_size': 0.3, 
-    'positive_pair_search_voxel_size_multiplier': 1.5,
+    'positive_pair_search_voxel_size_multiplier': 4.0,
   })
 
 class GenericBalancedLoader(PairDataset):
