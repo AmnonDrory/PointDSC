@@ -94,6 +94,7 @@ class Trainer(object):
 
         num_iter = len(self.train_loader)
         num_iter = min(self.training_max_iter, num_iter)
+        self.train_loader.sampler.set_epoch(epoch)
         trainer_loader_iter = self.train_loader.__iter__()
         for iter in range(num_iter):
             data_timer.tic()
