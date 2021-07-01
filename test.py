@@ -66,8 +66,8 @@ def analyze_stats(args):
     num_failed_icp = (allpair_stats[:,12] == 0).sum()
     
     s = "\n"
-    s += f"{args.algo}     | recall: {100*allpair_average[0]:.2f}%, #failed/#total: {num_failed_algo}/{num_total}, TE(cm): { 100*correct_pair_average[2]:.3f}, RE(deg): { correct_pair_average[1]:.3f}, reg time(s): {allpair_average[9]:.3f}\n"
-    s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {100*correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}\n"
+    s += f"{args.algo}     | recall: {100*allpair_average[0]:.2f}%, #failed/#total: {num_failed_algo}/{num_total}, TE(cm): { correct_pair_average[2]:.3f}, RE(deg): { correct_pair_average[1]:.3f}, reg time(s): {allpair_average[9]:.3f}\n"
+    s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}\n"
     logging.info(s)
 
 def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
@@ -153,10 +153,10 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             icp_timer.tic()
             # change the convension of transforamtion because open3d use left multi.
             refined_T = o3d.pipelines.registration.registration_icp(
-                src_pcd, tgt_pcd, 0.1, initial_trans,
+                src_pcd, tgt_pcd, 0.6, initial_trans,
                 o3d.pipelines.registration.TransformationEstimationPointToPoint()).transformation
-            pred_trans_icp = torch.from_numpy(refined_T[None, :, :]).to(pred_trans.device).float()
             icp_time = icp_timer.toc()
+            pred_trans_icp = torch.from_numpy(refined_T[None, :, :]).to(pred_trans.device).float()            
             
             class_stats = class_loss(pred_labels, gt_labels)
             loss, recall, Re, Te, rmse = evaluate_metric(pred_trans, gt_trans, src_keypts, tgt_keypts, pred_labels)
