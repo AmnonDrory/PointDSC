@@ -4,6 +4,7 @@ import os
 import pandas as pd
 from dataloader.paths import ApolloSouthbay_dir, balanced_sets_base_dir, cache_dir
 from glob import glob
+import errno
 
 ORIGINAL_DATASET_PATH = ApolloSouthbay_dir
 BALANCED_SETS_PATH = balanced_sets_base_dir
@@ -37,7 +38,7 @@ class Apollo_utils():
         assert os.path.isfile(filename), "Error: could not find file " + filename
         pcd = o3d.io.read_point_cloud(filename)
         cloud = np.asarray(pcd.points)
-        if cache_file is not None:
+        if (cache_file is not None) and not os.path.isfile(cache_file):
             np.save(cache_file, cloud)
         return cloud
 
@@ -65,8 +66,12 @@ class ApolloSouthbay_balanced:
             return 
 
         self.cache_dir = CACHE_DIR + '/' + self.name + '/' + self.phase + '/'
-        if not os.path.isdir(self.cache_dir):
-            os.makedirs(self.cache_dir)
+        if not os.path.exists(self.cache_dir):
+            try:
+                os.makedirs(self.cache_dir)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise e
 
         cache_files_raw = glob(self.cache_dir + '*.npy')        
         cache_files = [os.path.split(f)[-1] for f in cache_files_raw]

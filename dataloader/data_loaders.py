@@ -19,17 +19,55 @@ ALL_DATASETS = [
 ]
 dataset_str_mapping = {d.__name__: d for d in ALL_DATASETS}
 
+def get_dataset_name(dataset_code):
+  short_names_LUT = {
+    'K': 'KITTI',
+    'A': 'ApolloSouthbay',
+    'L': 'LyftLEVEL5',
+    'B': 'NuScenesBoston',
+    'S': 'NuScenesSingapore',
+    'KITTI': 'KITTI',
+    'ApolloSouthbay': 'ApolloSouthbay',
+    'LyftLEVEL5': 'LyftLEVEL5',
+    'NuScenesBoston': 'NuScenesBoston',
+    'NuScenesSingapore': 'NuScenesSingapore',    
+    'KITTIBalancedPairDataset': 'KITTI',
+    'ApolloSouthbayBalancedPairDataset': 'ApolloSouthbay',
+    'LyftLEVEL5BalancedPairDataset': 'LyftLEVEL5',
+    'NuScenesBostonDataset': 'NuScenesBoston',
+    'NuScenesSingaporeDataset': 'NuScenesSingapore'    
+  }  
+
+  if dataset_code not in LUT.keys():
+    if dataset_code in dataset_str_mapping.keys():
+      return dataset_code, None
+  assert dataset_code in LUT.keys(), "dataset name should be one of the following:" + ', '.join(LUT.keys())
+  return LUT[dataset_code]
+  
+  full_names_LUT = {
+    'KITTI': 'KITTIBalancedPairDataset',
+    'ApolloSouthbay': 'ApolloSouthbayBalancedPairDataset',
+    'LyftLEVEL5': 'LyftLEVEL5BalancedPairDataset',
+    'NuScenesBoston': 'NuScenesBostonDataset',
+    'NuScenesSingapore': 'NuScenesSingaporeDataset',
+  }   
+  
+  short_name = short_names_LUT[dataset_code]
+  full_name = full_names_LUT[short_name]
+  return full_name, short_name
+
 
 def make_data_loader(config, phase, batch_size, rank=0, world_size=1, seed=0, num_workers=0, shuffle=None):
   assert phase in ['train', 'trainval', 'val', 'test']
   if shuffle is None:
     shuffle = phase != 'test'
 
-  if config.dataset not in dataset_str_mapping.keys():
-    logging.error(f'Dataset {config.dataset}, does not exists in ' +
+  dataset_name, _ = get_dataset_name(config.dataset)
+  if dataset_name not in dataset_str_mapping.keys():
+    logging.error(f'Dataset {dataset_name}, does not exists in ' +
                   ', '.join(dataset_str_mapping.keys()))
 
-  Dataset = dataset_str_mapping[config.dataset]
+  Dataset = dataset_str_mapping[dataset_name]
 
   use_random_scale = False
   use_random_rotation = False

@@ -3,6 +3,7 @@ import numpy as np
 import pykitti
 from glob import glob
 import os
+import errno
 
 from dataloader.paths import kitti_dir, balanced_sets_base_dir, cache_dir
 
@@ -47,7 +48,7 @@ class KITTI_utils():
         self.init_session(session_ind)
         PC_dir = self.get_session_path(session_ind) + 'velodyne/'
         cloud = self.dataset.get_velo(int(index))[:,:3]
-        if cache_file is not None:
+        if (cache_file is not None) and not os.path.isfile(cache_file):
             np.save(cache_file, cloud)
         return cloud
 
@@ -110,7 +111,7 @@ class KITTI_full():
 
 class KITTI_balanced:
     def __init__(self, phase):
-        assert phase in ['train', 'validation', 'test']
+        assert phase in ['train', 'validation', 'test'], "unknown value phase=" + str(phase)
         self.name = 'KITTI'
         self.time_step = 0.1 # seconds between consecutive frames
         self.phase = phase        
@@ -131,8 +132,12 @@ class KITTI_balanced:
             return 
 
         self.cache_dir = CACHE_DIR + '/' + self.name + '/' + self.phase + '/'
-        if not os.path.isdir(self.cache_dir):
-            os.makedirs(self.cache_dir)
+        if not os.path.exists(self.cache_dir):
+            try:
+                os.makedirs(self.cache_dir)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise e
 
         cache_files_raw = glob(self.cache_dir + '*.npy')        
         cache_files = [os.path.split(f)[-1] for f in cache_files_raw]

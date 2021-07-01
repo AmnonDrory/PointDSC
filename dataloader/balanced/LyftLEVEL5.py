@@ -1,11 +1,8 @@
 import os
-os.environ["OMP_NUM_THREADS"] = "1"
-# Disable multiprocesing for numpy/opencv. We already multiprocess ourselves, this would mean every subprocess produces
-# even more threads which would lead to a lot of context switching, slowing things down a lot.
-
 import pandas as pd
 import numpy as np
 from glob import glob
+import errno
 
 from lyft_dataset_sdk.lyftdataset import LyftDataset
 from lyft_dataset_sdk.utils.data_classes import LidarPointCloud, Quaternion
@@ -28,7 +25,7 @@ class LyftLEVEL5_utils():
         assert cloud_ind < self.session_lengths[session_ind], f"Requested cloud {cloud_ind}, but session {session_ind} only contains {self.session_lengths[session_ind]} clouds"
         lidar_token = self.cloud_tokens[session_ind][cloud_ind]
         cloud = self.load_cloud_raw(lidar_token)
-        if cache_file is not None:
+        if (cache_file is not None) and not os.path.isfile(cache_file):
             np.save(cache_file, cloud)
         return cloud
 
@@ -143,8 +140,12 @@ class LyftLEVEL5_balanced:
             return 
 
         self.cache_dir = CACHE_DIR + '/' + self.name + '/' + self.phase + '/'
-        if not os.path.isdir(self.cache_dir):
-            os.makedirs(self.cache_dir)
+        if not os.path.exists(self.cache_dir):
+            try:
+                os.makedirs(self.cache_dir)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise e
 
         cache_files_raw = glob(self.cache_dir + '*.npy')        
         cache_files = [os.path.split(f)[-1] for f in cache_files_raw]
