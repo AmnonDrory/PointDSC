@@ -60,6 +60,15 @@ def analyze_stats(args):
     logging.info(f"\tOutput: Mean Inlier Num={allpair_average[5]:.2f}(precision={allpair_average[6]*100:.2f}%, recall={allpair_average[8]*100:.2f}%, f1={allpair_average[8]*100:.2f}%)")
     logging.info(f"\tMean model time: {allpair_average[9]:.2f}s, Mean icp time: {allpair_average[11]:.2f}s, Mean data time: {allpair_average[10]:.2f}s")
 
+    num_total = allpair_stats.shape[0]
+    num_failed_algo = (allpair_stats[:,0] == 0).sum()
+    num_failed_icp = (allpair_stats[:,12] == 0).sum()
+    
+    s = "\n"
+    s += f"{args.algo}     | recall: {100*allpair_average[0]:.2f}%, #failed/#total: {num_failed_algo}/{num_total}, TE(cm): { 100*correct_pair_average[2]:.3f}, RE(deg): { correct_pair_average[1]:.3f}, reg time(s): {allpair_average[9]:.3f}\n"
+    s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {100*correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}\n"
+    logging.info(s)
+
 def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args, rank):
     """
     Evaluate our model on KITTI testset.
@@ -67,7 +76,8 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
     num_pair = dloader.__len__()
     # 0.success, 1.RE, 2.TE, 3.input inlier number, 4.input inlier ratio,  5. output inlier number 
     # 6. output inlier precision, 7. output inlier recall, 8. output inlier F1 score 9. model_time, 10. data_time 11. icp_time
-    stats = np.zeros([num_pair, 12])
+    # 12. recall_icp 13. RE_icp 14. TE_icp
+    stats = np.zeros([num_pair, 15])
     dloader_iter = dloader.__iter__()
     class_loss = ClassificationLoss()
     evaluate_metric = TransformationLoss(re_thre=config.re_thre, te_thre=config.te_thre)
@@ -123,13 +133,12 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
             
             model_time = model_timer.toc()
             icp_timer.tic()
-            if use_icp:
-                pred_trans = icp_refine(src_keypts, tgt_keypts, pred_trans)
-            
+            pred_trans_icp = icp_refine(src_keypts, tgt_keypts, pred_trans)            
             icp_time = icp_timer.toc()
             
             class_stats = class_loss(pred_labels, gt_labels)
             loss, recall, Re, Te, rmse = evaluate_metric(pred_trans, gt_trans, src_keypts, tgt_keypts, pred_labels)
+            loss, recall_icp, Re_icp, Te_icp, rmse = evaluate_metric(pred_trans_icp, gt_trans, src_keypts, tgt_keypts, pred_labels)
             pred_trans = pred_trans[0]
 
             # save statistics
@@ -145,6 +154,9 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
             stats[i, 9] = model_time
             stats[i, 10] = data_time
             stats[i, 11] = icp_time
+            stats[i, 12] = float(recall_icp / 100.0)                      # success
+            stats[i, 13] = float(Re_icp)                                  # Re (deg)
+            stats[i, 14] = float(Te_icp)                                  # Te (cm)
 
 
             if rank==0:
