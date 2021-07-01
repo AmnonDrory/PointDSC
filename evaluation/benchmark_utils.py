@@ -49,9 +49,9 @@ def icp_refine(src_keypts, tgt_keypts, pred_trans):
     tgt_pcd = make_point_cloud(tgt_keypts.detach().cpu().numpy()[0])
     initial_trans = pred_trans[0].detach().cpu().numpy()
     # change the convension of transforamtion because open3d use left multi.
-    refined_T = o3d.registration.registration_icp(
-        src_pcd, tgt_pcd, 0.6, initial_trans,
-        o3d.registration.TransformationEstimationPointToPoint()).transformation
+    refined_T = o3d.pipelines.registration.registration_icp(
+        src_pcd, tgt_pcd, 0.1, initial_trans,
+        o3d.pipelines.registration.TransformationEstimationPointToPoint()).transformation
     refined_T = torch.from_numpy(refined_T[None, :, :]).to(pred_trans.device).float()
     return refined_T
 
