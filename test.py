@@ -22,6 +22,7 @@ from dataloader.data_loaders import make_data_loader, get_dataset_name
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader
+from filtered_RANSAC import filtered_RANSAC
 
 import torch.multiprocessing as mp
 import torch.distributed as dist
@@ -69,7 +70,7 @@ def analyze_stats(args):
     s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {100*correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}\n"
     logging.info(s)
 
-def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args, rank):
+def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
     """
     Evaluate our model on KITTI testset.
     """
@@ -90,7 +91,7 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
             #################################
             data_timer.tic()
             input_dict = dloader_iter.next()
-            corr, src_keypts, tgt_keypts, gt_trans, gt_labels = feature_extractor.process_batch(input_dict)
+            corr, src_keypts, tgt_keypts, gt_trans, gt_labels, src_features, tgt_features = feature_extractor.process_batch(input_dict)
             corr, src_keypts, tgt_keypts, gt_trans, gt_labels = \
                     corr.cuda(), src_keypts.cuda(), tgt_keypts.cuda(), gt_trans.cuda(), gt_labels.cuda()
             data = {
@@ -104,36 +105,57 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
             #################################
             # forward pass 
             #################################
-            model_timer.tic()
-            res = model(data)
-            pred_trans, pred_labels = res['final_trans'], res['final_labels']
+            if args.algo == 'PointDSC':
+                model_timer.tic()
+                res = model(data)
+                pred_trans, pred_labels = res['final_trans'], res['final_labels']
 
-            if args.solver == 'SVD':
-                pass
-            
-            elif args.solver == 'RANSAC':
-                # our method can be used with RANSAC as a outlier pre-filtering step.
-                src_pcd = make_point_cloud(src_keypts[0].detach().cpu().numpy())
-                tgt_pcd = make_point_cloud(tgt_keypts[0].detach().cpu().numpy())
-                corr = np.array([np.arange(src_keypts.shape[1]), np.arange(src_keypts.shape[1])])
-                pred_inliers = np.where(pred_labels.detach().cpu().numpy() > 0)[1]
-                corr = o3d.utility.Vector2iVector(corr[:, pred_inliers].T)
-                reg_result = o3d.registration.registration_ransac_based_on_correspondence(
-                    src_pcd, tgt_pcd, corr,
-                    max_correspondence_distance=config.inlier_threshold,
-                    estimation_method=o3d.registration.TransformationEstimationPointToPoint(False),
-                    ransac_n=3,
-                    criteria=o3d.registration.RANSACConvergenceCriteria(max_iteration=5000, max_validation=5000)
-                )
-                inliers = np.array(reg_result.correspondence_set)
-                pred_labels = torch.zeros_like(gt_labels)
-                pred_labels[0, inliers[:, 0]] = 1
+                if args.solver == 'SVD':
+                    pass
+                
+                elif args.solver == 'RANSAC':
+                    # our method can be used with RANSAC as a outlier pre-filtering step.
+                    src_pcd = make_point_cloud(src_keypts[0].detach().cpu().numpy())
+                    tgt_pcd = make_point_cloud(tgt_keypts[0].detach().cpu().numpy())
+                    corr = np.array([np.arange(src_keypts.shape[1]), np.arange(src_keypts.shape[1])])
+                    pred_inliers = np.where(pred_labels.detach().cpu().numpy() > 0)[1]
+                    corr = o3d.utility.Vector2iVector(corr[:, pred_inliers].T)
+                    reg_result = o3d.registration.registration_ransac_based_on_correspondence(
+                        src_pcd, tgt_pcd, corr,
+                        max_correspondence_distance=config.inlier_threshold,
+                        estimation_method=o3d.registration.TransformationEstimationPointToPoint(False),
+                        ransac_n=3,
+                        criteria=o3d.registration.RANSACConvergenceCriteria(max_iteration=5000, max_validation=5000)
+                    )
+                    inliers = np.array(reg_result.correspondence_set)
+                    pred_labels = torch.zeros_like(gt_labels)
+                    pred_labels[0, inliers[:, 0]] = 1
+                    pred_trans = torch.eye(4)[None].to(src_keypts.device)
+                    pred_trans[:, :4, :4] = torch.from_numpy(reg_result.transformation)
+                
+                model_time = model_timer.toc()
+
+                src_pcd = make_point_cloud(src_keypts.detach().cpu().numpy()[0])
+                tgt_pcd = make_point_cloud(tgt_keypts.detach().cpu().numpy()[0])
+                initial_trans = pred_trans[0].detach().cpu().numpy()
+
+            elif args.algo == 'RANSAC':
+                
+                initial_trans, model_time, src_pcd, tgt_pcd = filtered_RANSAC(input_dict['pcd0'][0], input_dict['pcd1'][0], src_features, tgt_features)
                 pred_trans = torch.eye(4)[None].to(src_keypts.device)
-                pred_trans[:, :4, :4] = torch.from_numpy(reg_result.transformation)
+                pred_trans[:, :4, :4] = torch.from_numpy(initial_trans)
+                pred_labels = torch.zeros_like(gt_labels) + np.nan
             
-            model_time = model_timer.toc()
+            else:
+                assert False, "unkown value for args.algo: " + args.algo
+
+
             icp_timer.tic()
-            pred_trans_icp = icp_refine(src_keypts, tgt_keypts, pred_trans)            
+            # change the convension of transforamtion because open3d use left multi.
+            refined_T = o3d.pipelines.registration.registration_icp(
+                src_pcd, tgt_pcd, 0.1, initial_trans,
+                o3d.pipelines.registration.TransformationEstimationPointToPoint()).transformation
+            pred_trans_icp = torch.from_numpy(refined_T[None, :, :]).to(pred_trans.device).float()
             icp_time = icp_timer.toc()
             
             class_stats = class_loss(pred_labels, gt_labels)
@@ -175,7 +197,7 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
 
     return stats
 
-def eval_KITTI(model, config, use_icp, world_size, seed, rank, args):
+def eval_KITTI(model, config, world_size, seed, rank, args):
 
     DL_config=edict({'voxel_size': 0.3, 
     'positive_pair_search_voxel_size_multiplier': 4, 
@@ -191,10 +213,10 @@ def eval_KITTI(model, config, use_icp, world_size, seed, rank, args):
             augment_axis=0,
             augment_rotation=0.0,
             augment_translation=0.0,   
-            fcgf_weights_file=config.fcgf_weights_file             
+            fcgf_weights_file=args.fcgf_weights_file             
             )                                        
     
-    stats = eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args, rank)
+    stats = eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank)
 
     np.save(f"{args.tmp_file_base}_{world_size}_{rank}.npy", stats)
 
@@ -236,7 +258,6 @@ def get_args_and_config():
     parser = argparse.ArgumentParser()
     parser.add_argument('--chosen_snapshot', default='', type=str, help='snapshot dir')
     parser.add_argument('--solver', default='SVD', type=str, choices=['SVD', 'RANSAC'])
-    parser.add_argument('--use_icp', default=False, type=str2bool)
     parser.add_argument('--save_npz', default=False, type=str2bool)
     parser.add_argument('--fcgf_weights_file', type=str, default=None, help='file containing FCGF network weights')
     parser.add_argument('--dataset', type=str, default=None, help='name of dataset for testing')
@@ -252,7 +273,12 @@ def get_args_and_config():
     args.outdir = generate_output_dir(dataset_name, 'Test', args.start_time)
     
     if args.algo == 'RANSAC':
-        config = edict({})
+        config = edict({
+            'in_dim': 6, 
+            'inlier_threshold': 0.6, 
+            'use_mutual': False, 
+            're_thre': 5 , 
+            'te_thre': 60 })
     else:
         config_path = f'snapshot/{args.chosen_snapshot}/config.json'
         config = json.load(open(config_path, 'r'))
@@ -264,7 +290,6 @@ def get_args_and_config():
         config.re_thre = 5
         config.te_thre = 60
         config.descriptor = 'fcgf'
-        config.fcgf_weights_file = args.fcgf_weights_file
 
     return args, config
 
@@ -290,28 +315,32 @@ def test_subset(rank, world_size, seed, config, args):
     device = 'cuda:%d' % torch.cuda.current_device()
     print("process %d, GPU: %s" % (rank, device))
 
-    # load from models/PointDSC.py
-    from models.PointDSC import PointDSC
-    model = PointDSC(
-            in_dim=config.in_dim,
-            num_layers=config.num_layers,
-            num_channels=config.num_channels,
-            num_iterations=config.num_iterations,
-            ratio=config.ratio,
-            inlier_threshold=config.inlier_threshold,
-            sigma_d=config.sigma_d,
-            k=config.k,
-            nms_radius=config.inlier_threshold,
-            )
-    device = 'cuda:%d' % torch.cuda.current_device()
-    checkpoint = torch.load(f'snapshot/{args.chosen_snapshot}/models/model_best.pkl', map_location=device)
-    miss = model.load_state_dict(checkpoint)
-    if rank==0:
-        print(miss)
-    model.eval()
+    if args.algo == "PointDSC":
+        # load from models/PointDSC.py
+        from models.PointDSC import PointDSC
+        model = PointDSC(
+                in_dim=config.in_dim,
+                num_layers=config.num_layers,
+                num_channels=config.num_channels,
+                num_iterations=config.num_iterations,
+                ratio=config.ratio,
+                inlier_threshold=config.inlier_threshold,
+                sigma_d=config.sigma_d,
+                k=config.k,
+                nms_radius=config.inlier_threshold,
+                )
+        device = 'cuda:%d' % torch.cuda.current_device()
+        checkpoint = torch.load(f'snapshot/{args.chosen_snapshot}/models/model_best.pkl', map_location=device)
+        miss = model.load_state_dict(checkpoint)
+        if rank==0:
+            print(miss)
+        model.eval()
+        model = model.cuda()
+    else:
+        model = None
 
     # evaluate on the test set
-    eval_KITTI(model.cuda(), config, args.use_icp, world_size, seed, rank, args)
+    eval_KITTI(model, config, world_size, seed, rank, args)
 
 if __name__ == '__main__':
     main()

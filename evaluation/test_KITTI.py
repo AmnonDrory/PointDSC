@@ -57,7 +57,7 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args
             #################################
             data_timer.tic()
             input_dict = dloader_iter.next()
-            corr, src_keypts, tgt_keypts, gt_trans, gt_labels = feature_extractor.process_batch(input_dict)
+            corr, src_keypts, tgt_keypts, gt_trans, gt_labels, _, _ = feature_extractor.process_batch(input_dict)
             corr, src_keypts, tgt_keypts, gt_trans, gt_labels = \
                     corr.cuda(), src_keypts.cuda(), tgt_keypts.cuda(), gt_trans.cuda(), gt_labels.cuda()
             data = {

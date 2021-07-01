@@ -99,7 +99,7 @@ class Trainer(object):
         for iter in range(num_iter):
             data_timer.tic()
             input_dict = trainer_loader_iter.next()
-            (corr_pos, src_keypts, tgt_keypts, gt_trans, gt_labels) = self.train_feature_extractor.process_batch(input_dict)
+            (corr_pos, src_keypts, tgt_keypts, gt_trans, gt_labels, _, _) = self.train_feature_extractor.process_batch(input_dict)
             if self.gpu_mode:
                 corr_pos, src_keypts, tgt_keypts, gt_trans, gt_labels = \
                     corr_pos.cuda(), src_keypts.cuda(), tgt_keypts.cuda(), gt_trans.cuda(), gt_labels.cuda()
@@ -215,7 +215,7 @@ class Trainer(object):
         for iter in range(num_iter):
             data_timer.tic()
             input_dict = val_loader_iter.next()
-            (corr_pos, src_keypts, tgt_keypts, gt_trans, gt_labels) = self.val_feature_extractor.process_batch(input_dict)
+            (corr_pos, src_keypts, tgt_keypts, gt_trans, gt_labels, _, _) = self.val_feature_extractor.process_batch(input_dict)
             if self.gpu_mode:
                 corr_pos, src_keypts, tgt_keypts, gt_trans, gt_labels = \
                     corr_pos.cuda(), src_keypts.cuda(), tgt_keypts.cuda(), gt_trans.cuda(), gt_labels.cuda()
