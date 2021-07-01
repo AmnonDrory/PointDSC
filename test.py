@@ -9,6 +9,7 @@ import open3d as o3d
 import tempfile
 from glob import glob
 import datetime
+import errno
 from tqdm import tqdm
 from easydict import EasyDict as edict
 from libs.loss import TransformationLoss, ClassificationLoss
@@ -258,15 +259,10 @@ def get_args_and_config():
 def main():
     args, config = get_args_and_config()
     seed = 51
-    world_size = torch.cuda.device_count()  
-    print("%d GPUs are available" % world_size)
 
     logging.info("Starting")
-  
-    if world_size == 1:
-        test_subset(0, world_size, seed, config, args)
-    else:
-        mp.spawn(test_subset, nprocs=world_size, args=(world_size,seed, config, args))      
+    if args.rank is not None:
+        test_subset(args.rank, args.world_size, seed, config, args)
 
     if args.do_analysis:
 	    analyze_stats(args)            
@@ -277,11 +273,8 @@ def main():
 
 def test_subset(rank, world_size, seed, config, args):
     # This function is performed in parallel in several processes, one for each available GPU
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '8880'
-    dist.init_process_group(backend='nccl', world_size=world_size, rank=rank)
+
     set_seed(seed)
-    torch.cuda.set_device(rank)
     device = 'cuda:%d' % torch.cuda.current_device()
     print("process %d, GPU: %s" % (rank, device))
 
@@ -307,7 +300,6 @@ def test_subset(rank, world_size, seed, config, args):
 
     # evaluate on the test set
     eval_KITTI(model.cuda(), config, args.use_icp, world_size, seed, rank, args)
-
 
 if __name__ == '__main__':
     main()
