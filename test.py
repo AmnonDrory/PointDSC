@@ -7,6 +7,8 @@ import numpy as np
 import importlib
 import open3d as o3d
 import tempfile
+from glob import glob
+import datetime
 from tqdm import tqdm
 from easydict import EasyDict as edict
 from libs.loss import TransformationLoss, ClassificationLoss
@@ -15,7 +17,7 @@ from utils.pointcloud import make_point_cloud
 from evaluation.benchmark_utils import set_seed, icp_refine
 from utils.timer import Timer
 
-from dataloader.data_loaders import make_data_loader
+from dataloader.data_loaders import make_data_loader, get_dataset_name
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader
@@ -34,6 +36,28 @@ logging.basicConfig(format='%(asctime)s %(message)s',
                     handlers=[ch])
 
 logging.basicConfig(level=logging.INFO, format="")
+
+def analyze_stats(args):    
+    
+    file_base = args.tmp_file_base
+    file_names = glob(file_base + '*.npy')
+    arrs_list = []
+    for filename in file_names:
+        stats = np.load(filename)        
+        arrs_list.append(stats)
+    all_stats = np.vstack(arrs_list)
+
+    np.save(args.outdir + 'raw_stats.npy', all_stats)
+
+    allpair_stats = all_stats
+    allpair_average = allpair_stats.mean(0)
+    correct_pair_average = allpair_stats[allpair_stats[:, 0] == 1].mean(0)
+
+    logging.info(f"*"*40)
+    logging.info(f"All {allpair_stats.shape[0]} pairs, Mean Success Rate={allpair_average[0]*100:.2f}%, Mean Re={correct_pair_average[1]:.2f}, Mean Te={correct_pair_average[2]:.2f}")
+    logging.info(f"\tInput:  Mean Inlier Num={allpair_average[3]:.2f}(ratio={allpair_average[4]*100:.2f}%)")
+    logging.info(f"\tOutput: Mean Inlier Num={allpair_average[5]:.2f}(precision={allpair_average[6]*100:.2f}%, recall={allpair_average[8]*100:.2f}%, f1={allpair_average[8]*100:.2f}%)")
+    logging.info(f"\tMean model time: {allpair_average[9]:.2f}s, Mean icp time: {allpair_average[11]:.2f}s, Mean data time: {allpair_average[10]:.2f}s")
 
 def eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args, rank):
     """
@@ -159,40 +183,21 @@ def eval_KITTI(model, config, use_icp, world_size, seed, rank, args):
     
     stats = eval_KITTI_per_pair(model, dloader, feature_extractor, config, use_icp, args, rank)
 
-    if rank == 0:
-        logging.info(f"Max memory allocated: {torch.cuda.max_memory_allocated() / 1024 ** 3:.2f}GB")
+    np.save(f"{args.tmp_file_base}_{world_size}_{rank}.npy", stats)
 
-    # pair level average 
-    allpair_stats = stats
-    allpair_average = allpair_stats.mean(0)
-    correct_pair_average = allpair_stats[allpair_stats[:, 0] == 1].mean(0)
-
-    report = torch.tensor([1.0, allpair_stats.shape[0], allpair_average[0], correct_pair_average[1], correct_pair_average[2], allpair_average[3], allpair_average[4], allpair_average[5], allpair_average[6], allpair_average[7], allpair_average[8], allpair_average[9], allpair_average[10], allpair_average[11] ], device=torch.cuda.current_device())
-    dist.all_reduce(report, op=dist.ReduceOp.SUM)
-
-    count = report[0].item()
-    allpair_stats_shape_0  = report[1].item()
-    allpair_average_0      = report[2].item() / count    
-    correct_pair_average_1 = report[3].item() / count    
-    correct_pair_average_2 = report[4].item() / count    
-    allpair_average_3      = report[5].item() / count    
-    allpair_average_4      = report[6].item() / count    
-    allpair_average_5      = report[7].item() / count    
-    allpair_average_6      = report[8].item() / count    
-    allpair_average_7      = report[9].item() / count    
-    allpair_average_8      = report[10].item() / count    
-    allpair_average_9      = report[11].item() / count    
-    allpair_average_10     = report[12].item() / count    
-    allpair_average_11     = report[13].item() / count    
-
-    if rank == 0:
-        logging.info(f"*"*40)
-        logging.info(f"All {allpair_stats_shape_0} pairs, Mean Success Rate={allpair_average_0*100:.2f}%, Mean Re={correct_pair_average_1:.2f}, Mean Te={correct_pair_average_2:.2f}")
-        logging.info(f"\tInput:  Mean Inlier Num={allpair_average_3:.2f}(ratio={allpair_average_4*100:.2f}%)")
-        logging.info(f"\tOutput: Mean Inlier Num={allpair_average_5:.2f}(precision={allpair_average_6*100:.2f}%, recall={allpair_average_7*100:.2f}%, f1={allpair_average_8*100:.2f}%)")
-        logging.info(f"\tMean model time: {allpair_average_9:.2f}s, Mean icp time: {allpair_average_11:.2f}s, Mean data time: {allpair_average_10:.2f}s")
-
-    return allpair_stats
+def generate_output_dir(dataset_name, phase, start_time=None):
+    if start_time is not None:
+        current_time_str = start_time
+    else:
+        current_time_str = datetime.datetime.now().strftime("%Y%m%d_%H_%M_%S")
+    output_dir =  f"outputs/{dataset_name}.{phase}.{current_time_str}/"
+    try:
+        os.makedirs(output_dir)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise e        
+    
+    return output_dir
 
 def get_args_and_config():
 
@@ -230,6 +235,8 @@ def get_args_and_config():
     args.world_size    = world_size 
     args.rank          = rank 
     args.do_analysis   = do_analysis  
+    _, dataset_name = get_dataset_name(args.dataset)
+    args.outdir = generate_output_dir(dataset_name, 'Test', args.start_time)
     
     if args.algo == 'RANSAC':
         config = edict({})
@@ -257,11 +264,18 @@ def main():
     logging.info("Starting")
   
     if world_size == 1:
-        train_parallel(0, world_size, seed, config, args)
+        test_subset(0, world_size, seed, config, args)
     else:
-        mp.spawn(train_parallel, nprocs=world_size, args=(world_size,seed, config, args))      
+        mp.spawn(test_subset, nprocs=world_size, args=(world_size,seed, config, args))      
 
-def train_parallel(rank, world_size, seed, config, args):
+    if args.do_analysis:
+	    analyze_stats(args)            
+    
+	    tmp_files = glob(args.tmp_file_base + '*')
+	    for f in tmp_files:
+	        os.remove(f)
+
+def test_subset(rank, world_size, seed, config, args):
     # This function is performed in parallel in several processes, one for each available GPU
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '8880'
@@ -292,7 +306,7 @@ def train_parallel(rank, world_size, seed, config, args):
     model.eval()
 
     # evaluate on the test set
-    stats = eval_KITTI(model.cuda(), config, args.use_icp, world_size, seed, rank, args)
+    eval_KITTI(model.cuda(), config, args.use_icp, world_size, seed, rank, args)
 
 
 if __name__ == '__main__':
