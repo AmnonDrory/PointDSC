@@ -19,7 +19,7 @@ ALL_DATASETS = [
 ]
 dataset_str_mapping = {d.__name__: d for d in ALL_DATASETS}
 
-def get_dataset_name(dataset_code):
+def get_dataset_name(dataset_nickname):
   short_names_LUT = {
     'K': 'KITTI',
     'A': 'ApolloSouthbay',
@@ -38,11 +38,10 @@ def get_dataset_name(dataset_code):
     'NuScenesSingaporeDataset': 'NuScenesSingapore'    
   }  
 
-  if dataset_code not in LUT.keys():
-    if dataset_code in dataset_str_mapping.keys():
-      return dataset_code, None
-  assert dataset_code in LUT.keys(), "dataset name should be one of the following:" + ', '.join(LUT.keys())
-  return LUT[dataset_code]
+  if dataset_nickname not in short_names_LUT.keys():
+    if dataset_nickname in dataset_str_mapping.keys():
+      return dataset_nickname, None
+  assert dataset_nickname in short_names_LUT.keys(), "dataset name should be one of the following:" + ', '.join(short_names_LUT.keys())
   
   full_names_LUT = {
     'KITTI': 'KITTIBalancedPairDataset',
@@ -52,17 +51,17 @@ def get_dataset_name(dataset_code):
     'NuScenesSingapore': 'NuScenesSingaporeDataset',
   }   
   
-  short_name = short_names_LUT[dataset_code]
+  short_name = short_names_LUT[dataset_nickname]
   full_name = full_names_LUT[short_name]
   return full_name, short_name
 
 
-def make_data_loader(config, phase, batch_size, rank=0, world_size=1, seed=0, num_workers=0, shuffle=None):
+def make_data_loader(dataset_nickname, config, phase, batch_size, rank=0, world_size=1, seed=0, num_workers=0, shuffle=None):
   assert phase in ['train', 'trainval', 'val', 'test']
   if shuffle is None:
     shuffle = phase != 'test'
 
-  dataset_name, _ = get_dataset_name(config.dataset)
+  dataset_name, _ = get_dataset_name(dataset_nickname)
   if dataset_name not in dataset_str_mapping.keys():
     logging.error(f'Dataset {dataset_name}, does not exists in ' +
                   ', '.join(dataset_str_mapping.keys()))
@@ -78,7 +77,7 @@ def make_data_loader(config, phase, batch_size, rank=0, world_size=1, seed=0, nu
     transforms += [t.Jitter()]
 
   if phase in ['val', 'test']:
-    use_random_rotation = config.test_random_rotation
+    use_random_rotation = False
 
   dset = Dataset(phase,
                  transform=t.Compose(transforms),
