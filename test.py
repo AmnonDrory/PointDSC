@@ -6,6 +6,7 @@ import torch
 import numpy as np
 import importlib
 import open3d as o3d
+import tempfile
 from tqdm import tqdm
 from easydict import EasyDict as edict
 from libs.loss import TransformationLoss, ClassificationLoss
@@ -193,7 +194,26 @@ def eval_KITTI(model, config, use_icp, world_size, seed, rank, args):
 
     return allpair_stats
 
-def main():
+def get_args_and_config():
+
+    if sys.argv[1] == 'test_parallel':
+        start_time = sys.argv[2]
+        tmp_file_base = sys.argv[3]
+        world_size = int(sys.argv[4])
+        if sys.argv[5] == 'analysis':
+            rank = None
+            do_analysis = True
+        else:
+            rank = int(sys.argv[5])
+            do_analysis = False
+        sys.argv = sys.argv[5:]
+    else:
+        start_time=None
+        tmp_file_base = tempfile.gettempdir() + '/test_kitti_%16d' % int(np.random.rand()*10**16)    
+        world_size = 1
+        rank = 0 
+        do_analysis = True
+
     from config import str2bool
     parser = argparse.ArgumentParser()
     parser.add_argument('--chosen_snapshot', default='', type=str, help='snapshot dir')
@@ -202,21 +222,34 @@ def main():
     parser.add_argument('--save_npz', default=False, type=str2bool)
     parser.add_argument('--fcgf_weights_file', type=str, default=None, help='file containing FCGF network weights')
     parser.add_argument('--dataset', type=str, default=None, help='name of dataset for testing')
+    parser.add_argument('--algo', type=str, default='PointDSC', help='algorithm to use for testing', choices=['PointDSC', 'RANSAC'])
     args = parser.parse_args()
 
+    args.start_time    = start_time      
+    args.tmp_file_base = tmp_file_base 
+    args.world_size    = world_size 
+    args.rank          = rank 
+    args.do_analysis   = do_analysis  
     
-    config_path = f'snapshot/{args.chosen_snapshot}/config.json'
-    config = json.load(open(config_path, 'r'))
-    config = edict(config)
+    if args.algo == 'RANSAC':
+        config = edict({})
+    else:
+        config_path = f'snapshot/{args.chosen_snapshot}/config.json'
+        config = json.load(open(config_path, 'r'))
+        config = edict(config)
 
-    ## in case test the generalization ability of model trained on 3DMatch
-    config.inlier_threshold = 0.6
-    config.sigma_d = 1.2
-    config.re_thre = 5
-    config.te_thre = 60
-    config.descriptor = 'fcgf'
-    config.fcgf_weights_file = args.fcgf_weights_file
+        ## in case test the generalization ability of model trained on 3DMatch
+        config.inlier_threshold = 0.6
+        config.sigma_d = 1.2
+        config.re_thre = 5
+        config.te_thre = 60
+        config.descriptor = 'fcgf'
+        config.fcgf_weights_file = args.fcgf_weights_file
 
+    return args, config
+
+def main():
+    args, config = get_args_and_config()
     seed = 51
     world_size = torch.cuda.device_count()  
     print("%d GPUs are available" % world_size)
