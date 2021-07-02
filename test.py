@@ -293,12 +293,12 @@ def get_args_and_config():
 
     if args.rank == 0:
         print("args:\n====")
-        for k in args.keys():
-            print(f"\t{k} = {args[k]}")
+        for k in args.__dict__.keys():
+            print(f"\t{k} = {args.__dict__[k]}")
 
         print("config:\n======")
-        for k in config.keys():
-            print(f"\t{k} = {config[k]}")        
+        for k in config.__dict__.keys():
+            print(f"\t{k} = {config.__dict__[k]}")        
 
     return args, config
 
