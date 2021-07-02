@@ -70,6 +70,11 @@ def analyze_stats(args):
     s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}\n"
     logging.info(s)
 
+    with open(args.outdir + 'log.txt','w') as fid:
+        for k in args.__dict__.keys():
+            fid.write(f"{k} = {args.__dict__[k]}\n")        
+        fid.write("\n" + s)
+
 def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
     """
     Evaluate our model on KITTI testset.
