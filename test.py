@@ -291,6 +291,15 @@ def get_args_and_config():
         config.te_thre = 60
         config.descriptor = 'fcgf'
 
+    if args.rank == 0:
+        print("args:\n====")
+        for k in args.keys():
+            print(f"\t{k} = {args[k]}")
+
+        print("config:\n======")
+        for k in config.keys():
+            print(f"\t{k} = {config[k]}")        
+
     return args, config
 
 def main():
