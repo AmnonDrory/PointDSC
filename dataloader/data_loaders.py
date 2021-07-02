@@ -86,24 +86,35 @@ def make_data_loader(dataset_nickname, config, phase, batch_size, rank=0, world_
                  config=config,
                  rank=rank)
 
-  sampler = torch.utils.data.distributed.DistributedSampler(
-    dset,
-    num_replicas=world_size,
-    rank=rank,
-    shuffle=shuffle,
-    seed=seed)
-
   collation_fn = CollationFunctionFactory(concat_correspondences=False,
                                           collation_type='collate_pair')
 
-  loader = torch.utils.data.DataLoader(
+  if world_size == 1:
+
+    loader = torch.utils.data.DataLoader(
+        dset, 
+        batch_size=batch_size, 
+        shuffle=shuffle, 
+        collate_fn=collation_fn,
+        num_workers=num_workers)
+
+  else:
+
+    sampler = torch.utils.data.distributed.DistributedSampler(
       dset,
-      batch_size=batch_size,
-      shuffle=False,
-      num_workers=num_workers,
-      collate_fn=collation_fn,
-      sampler=sampler,
-      pin_memory=True,
-      drop_last=True)
+      num_replicas=world_size,
+      rank=rank,
+      shuffle=shuffle,
+      seed=seed)
+
+    loader = torch.utils.data.DataLoader(
+        dset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        collate_fn=collation_fn,
+        sampler=sampler,
+        pin_memory=True,
+        drop_last=True)
 
   return loader

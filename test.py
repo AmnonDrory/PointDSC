@@ -80,6 +80,8 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
     Evaluate our model on KITTI testset.
     """
     num_pair = dloader.__len__()
+    if args.max_samples is not None:
+        num_pair = min(num_pair, args.max_samples)
     # 0.success, 1.RE, 2.TE, 3.input inlier number, 4.input inlier ratio,  5. output inlier number 
     # 6. output inlier precision, 7. output inlier recall, 8. output inlier F1 score 9. model_time, 10. data_time 11. icp_time
     # 12. recall_icp 13. RE_icp 14. TE_icp
@@ -254,7 +256,7 @@ def get_args_and_config():
         sys.argv = sys.argv[5:]
     else:
         start_time=None
-        tmp_file_base = tempfile.gettempdir() + '/test_kitti_%16d' % int(np.random.rand()*10**16)    
+        tmp_file_base = tempfile.gettempdir() + '/test_%16d' % int(np.random.rand()*10**16)    
         world_size = 1
         rank = 0 
         do_analysis = True
@@ -267,6 +269,7 @@ def get_args_and_config():
     parser.add_argument('--fcgf_weights_file', type=str, default=None, help='file containing FCGF network weights')
     parser.add_argument('--dataset', type=str, default=None, help='name of dataset for testing')
     parser.add_argument('--algo', type=str, default='PointDSC', help='algorithm to use for testing', choices=['PointDSC', 'RANSAC'])
+    parser.add_argument('--max_samples', type=int, default=None, help='maximum nuimber of samples to use in test')
     args = parser.parse_args()
 
     args.start_time    = start_time      
