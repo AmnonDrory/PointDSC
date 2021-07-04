@@ -67,7 +67,7 @@ def analyze_stats(args):
     
     s = "\n"
     s += f"{args.algo}     | recall: {100*allpair_average[0]:.2f}%, #failed/#total: {num_failed_algo}/{num_total}, TE(cm): { correct_pair_average[2]:.3f}, RE(deg): { correct_pair_average[1]:.3f}, reg time(s): {allpair_average[9]:.3f}\n"
-    s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}\n"
+    s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}, Total time(s) {allpair_average[9]+allpair_average[11]:.3f}\n"
     logging.info(s)
 
     with open(args.outdir + 'log.txt','w') as fid:

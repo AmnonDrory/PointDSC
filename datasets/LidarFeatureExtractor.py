@@ -93,7 +93,7 @@ class LidarFeatureExtractor():
         #                 more reasonable to limt rotation to almost-planar
 
         # AD OBSERVATION: this augmentation is also performed on validation set. Therefore, validation outputs are
-        # not deterministic. For test setm the augmentation parameters are set to 0, therefore the
+        # not deterministic. For test set, the augmentation parameters are set to 0, therefore the
         # augmentation functions do nothing.
 
         aug_R = rotation_matrix(self.augment_axis, self.augment_rotation)
