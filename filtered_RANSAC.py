@@ -35,7 +35,7 @@ def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_i
             is_quad_inds = is_quad_mask.nonzero(as_tuple=True)[0]
             if len(is_quad_inds) > samples_per_quad:
                 ord = torch.argsort(feat_dist[is_quad_mask])
-                is_quad_inds = is_quad_inds[ord[:NUM_PER_QUAD]] # AD TODO: change NUM_PER_QUAD to samples_per_quad, check th effect on running time, and the total number kept
+                is_quad_inds = is_quad_inds[ord[:samples_per_quad]]
             keep[is_quad_inds] = True
             num_remaining_samples -= len(is_quad_inds)
             num_remaining_quads -= 1

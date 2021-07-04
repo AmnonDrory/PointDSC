@@ -11,7 +11,6 @@ from libs.trainer import Trainer
 from models.PointDSC import PointDSC
 from torch import optim
 
-from dataloader.kitti_loader import KITTINMPairDataset, 
 from dataloader.KITTI_balanced_loader import KITTIBalancedPairDataset
 from dataloader.NuScenes_balanced_loader import NuScenesBostonDataset
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
