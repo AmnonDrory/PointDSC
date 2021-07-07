@@ -1,6 +1,10 @@
 # Parts of this implementation were copied from the Deep Global Registration project, that carries the following copyright notice:
     # Copyright (c) Chris Choy (chrischoy@ai.stanford.edu) and Wei Dong (weidong@andrew.cmu.edu)
 
+__doc__ = """
+Implementation of the FCGF feature-space distance filtered RANSAC algorithm (FR).
+"""
+
 import numpy as np
 import torch
 import open3d as o3d
@@ -47,7 +51,7 @@ def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_i
 
     return corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig
 
-def filtered_RANSAC(A,B, A_feat, B_feat):
+def FR(A,B, A_feat, B_feat):    
 
     voxel_size = 0.3
     
