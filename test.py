@@ -84,8 +84,8 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
         num_pair = min(num_pair, args.max_samples)
     # 0.success, 1.RE, 2.TE, 3.input inlier number, 4.input inlier ratio,  5. output inlier number 
     # 6. output inlier precision, 7. output inlier recall, 8. output inlier F1 score 9. model_time, 10. data_time 11. icp_time
-    # 12. recall_icp 13. RE_icp 14. TE_icp
-    stats = np.zeros([num_pair, 15])
+    # 12. recall_icp 13. RE_icp 14. TE_icp 15. drive 16.t0 17.t1
+    stats = np.zeros([num_pair, 18])
     dloader_iter = dloader.__iter__()
     class_loss = ClassificationLoss()
     evaluate_metric = TransformationLoss(re_thre=config.re_thre, te_thre=config.te_thre)
@@ -186,6 +186,9 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             stats[i, 12] = float(recall_icp / 100.0)                      # success
             stats[i, 13] = float(Re_icp)                                  # Re (deg)
             stats[i, 14] = float(Te_icp)                                  # Te (cm)
+            stats[i, 15] = input_dict['extra_packages']['drive']
+            stats[i, 16] = input_dict['extra_packages']['t0']
+            stats[i, 17] = input_dict['extra_packages']['t1']
 
 
             if rank==0:
