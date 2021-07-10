@@ -40,7 +40,7 @@ def get_dataset_name(dataset_nickname):
 
   if dataset_nickname not in short_names_LUT.keys():
     if dataset_nickname in dataset_str_mapping.keys():
-      return dataset_nickname, None
+      return dataset_nickname, dataset_nickname
   assert dataset_nickname in short_names_LUT.keys(), "dataset name should be one of the following:" + ', '.join(short_names_LUT.keys())
   
   full_names_LUT = {

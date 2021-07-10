@@ -11,8 +11,7 @@ from libs.trainer import Trainer
 from models.PointDSC import PointDSC
 from torch import optim
 
-from dataloader.KITTI_balanced_loader import KITTIBalancedPairDataset
-from dataloader.NuScenes_balanced_loader import NuScenesBostonDataset
+from dataloader.data_loaders import make_data_loader
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader
@@ -55,36 +54,6 @@ def main():
         train_parallel(0, world_size, seed, config)
     else:
         mp.spawn(train_parallel, nprocs=world_size, args=(world_size,seed, config))  
-
-def make_loader(phase, PointDSC_config, rank, world_size, seed):
-    Dataset = NuScenesBostonDataset # KITTIBalancedPairDataset
-    shuffle = (phase == 'train')
-
-    dset = Dataset(phase,
-                transform=None, random_rotation=False, random_scale=False,
-                manual_seed=False, config=None, rank=rank)
-
-    sampler = torch.utils.data.distributed.DistributedSampler(
-        dset,
-        num_replicas=world_size,
-        rank=rank,
-        shuffle=shuffle,
-        seed=seed)
-
-    collation_fn = CollationFunctionFactory(concat_correspondences=False,
-                                            collation_type='collate_pair')
-
-    loader = torch.utils.data.DataLoader(
-        dset,
-        batch_size=PointDSC_config.batch_size,
-        shuffle=False,
-        num_workers=PointDSC_config.num_workers,
-        collate_fn=collation_fn,
-        sampler=sampler,
-        pin_memory=True,
-        drop_last=True)
-
-    return loader
 
 def train_parallel(rank, world_size, seed, config):
     # This function is performed in parallel in several processes, one for each available GPU
@@ -131,8 +100,11 @@ def train_parallel(rank, world_size, seed, config):
     )
 
     # create dataset and dataloader
-    config.train_loader = make_loader('train', config, rank, world_size, seed)
-    config.val_loader = make_loader('val', config, rank, world_size, seed)
+    DL_config=edict({'voxel_size': 0.3, 
+        'positive_pair_search_voxel_size_multiplier': 4, 
+        'use_random_rotation': False, 'use_random_scale': False})
+    config.train_loader = make_data_loader(config.dataset, DL_config, 'train', config.batch_size, rank, world_size, seed, config.num_workers,shuffle=True)
+    config.val_loader = make_data_loader(config.dataset, DL_config, 'val', config.batch_size, rank, world_size, seed, config.num_workers,shuffle=False)
 
     config.train_feature_extractor = LidarFeatureExtractor(
             split='train',

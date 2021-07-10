@@ -3,6 +3,7 @@ import time
 import os
 
 from dataloader.paths import kitti_dir, fcgf_weights_file
+from dataloader.data_loaders import get_dataset_name
 
 arg_lists = []
 parser = argparse.ArgumentParser()
@@ -17,15 +18,15 @@ def add_argument_group(name):
 def str2bool(v):
     return v.lower() in ('true', '1')
 
+dataset_arg = add_argument_group('Dataset')
+dataset_arg.add_argument('--dataset', type=str, default=None, help='name of dataset for testing')
 
-dataset = 'kitti'
-experiment_id = f"PointDSC_{dataset}_{time.strftime('%m%d%H%M')}"
 # snapshot configurations
 snapshot_arg = add_argument_group('Snapshot')
-snapshot_arg.add_argument('--snapshot_dir', type=str, default=f'snapshot/{experiment_id}')
-snapshot_arg.add_argument('--tboard_dir', type=str, default=f'tensorboard/{experiment_id}')
+snapshot_arg.add_argument('--snapshot_dir', type=str, default=None)
+snapshot_arg.add_argument('--tboard_dir', type=str, default=None)
 snapshot_arg.add_argument('--snapshot_interval', type=int, default=1)
-snapshot_arg.add_argument('--save_dir', type=str, default=os.path.join(f'snapshot/{experiment_id}', 'models/'))
+snapshot_arg.add_argument('--save_dir', type=str, default=None)
 
 # Network configurations
 net_arg = add_argument_group('Network')
@@ -60,22 +61,14 @@ opt_arg.add_argument('--scheduler_interval', type=int, default=1)
 
 # Dataset and dataloader configurations
 data_arg = add_argument_group('Data')
-if dataset == '3DMatch':
-    data_arg.add_argument('--root', type=str, default='dummy(root)')
-    data_arg.add_argument('--descriptor', type=str, default='fcgf', choices=['d3feat', 'fpfh', 'fcgf'])
-    data_arg.add_argument('--inlier_threshold', type=float, default=0.10)
-    net_arg.add_argument('--sigma_d', type=float, default=0.10)
-    data_arg.add_argument('--downsample', type=float, default=0.03)
-    data_arg.add_argument('--re_thre', type=float, default=15, help='rotation error thrshold (deg)')
-    data_arg.add_argument('--te_thre', type=float, default=30, help='translation error thrshold (cm)')
-else:
-    data_arg.add_argument('--root', type=str, default=kitti_dir)
-    data_arg.add_argument('--descriptor', type=str, default='fcgf', choices=['fcgf', 'fpfh'])
-    data_arg.add_argument('--inlier_threshold', type=float, default=1.2)
-    net_arg.add_argument('--sigma_d', type=float, default=1.2)
-    data_arg.add_argument('--downsample', type=float, default=0.30)
-    data_arg.add_argument('--re_thre', type=float, default=5, help='rotation error thrshold (deg)')
-    data_arg.add_argument('--te_thre', type=float, default=60, help='translation error thrshold (cm)')
+
+data_arg.add_argument('--root', type=str, default=None)
+data_arg.add_argument('--descriptor', type=str, default=None, choices=['d3feat', 'fpfh', 'fcgf', None])
+data_arg.add_argument('--inlier_threshold', type=float, default=None)
+net_arg.add_argument('--sigma_d', type=float, default=None)
+data_arg.add_argument('--downsample', type=float, default=None)
+data_arg.add_argument('--re_thre', type=float, default=None, help='rotation error thrshold (deg)')
+data_arg.add_argument('--te_thre', type=float, default=None, help='translation error thrshold (cm)')
 
 data_arg.add_argument('--fcgf_weights_file', type=str, default=None, help='file containing FCGF network weights')
 data_arg.add_argument('--num_node', type=int, default=1000)
@@ -96,4 +89,43 @@ misc_arg.add_argument('--weights_fixed', type=str2bool, default=False)
 
 def get_config():
     args = parser.parse_args()
+    _, dataset = get_dataset_name(args.dataset)
+    experiment_id = f"PointDSC_{dataset}_{time.strftime('%m%d%H%M')}"
+    if args.snapshot_dir is None:
+        args.snapshot_dir = f'snapshot/{experiment_id}'
+    if args.tboard_dir is None:
+        args.tboard_dir = f'tensorboard/{experiment_id}'
+    if args.save_dir is None:
+        args.save_dir = os.path.join(f'snapshot/{experiment_id}', 'models/')    
+    if dataset == '3DMatch':
+        if args.root is None:
+            args.root='dummy(root)'        
+        if args.descriptor is None:
+            args.descriptor='fcgf'
+        if args.inlier_threshold is None:
+            args.inlier_threshold=0.10
+        if args.sigma_d is None:
+            args.sigma_d=0.10
+        if args.downsample is None:
+            args.downsample=0.03
+        if args.re_thre is None:
+            args.re_thre=15
+        if args.te_thre is None:                                        
+            args.te_thre=30
+    else:
+        if args.root is None:
+            args.root=kitti_dir
+        if args.descriptor is None:
+            args.descriptor='fcgf'
+        if args.inlier_threshold is None:
+            args.inlier_threshold=1.2
+        if args.sigma_d is None:
+            args.sigma_d=1.2
+        if args.downsample is None:
+            args.downsample=0.30
+        if args.re_thre is None:
+            args.re_thre=5
+        if args.te_thre is None:                        
+            args.te_thre=60        
+
     return args
