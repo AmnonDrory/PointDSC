@@ -186,9 +186,9 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             stats[i, 12] = float(recall_icp / 100.0)                      # success
             stats[i, 13] = float(Re_icp)                                  # Re (deg)
             stats[i, 14] = float(Te_icp)                                  # Te (cm)
-            stats[i, 15] = input_dict['extra_packages']['drive']
-            stats[i, 16] = input_dict['extra_packages']['t0']
-            stats[i, 17] = input_dict['extra_packages']['t1']
+            stats[i, 15] = input_dict['extra_packages'][0]['drive']
+            stats[i, 16] = input_dict['extra_packages'][0]['t0']
+            stats[i, 17] = input_dict['extra_packages'][0]['t1']
 
 
             if rank==0:
