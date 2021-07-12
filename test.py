@@ -23,6 +23,7 @@ from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader
 from algorithms.FR import FR
+from algorithms.TEASER_plus_plus import TEASER
 
 import torch.multiprocessing as mp
 import torch.distributed as dist
@@ -152,6 +153,16 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
                 pred_trans = torch.eye(4)[None].to(src_keypts.device)
                 pred_trans[:, :4, :4] = torch.from_numpy(initial_trans)
                 pred_labels = torch.zeros_like(gt_labels) + np.nan
+
+            elif args.algo == 'TEASER':                
+                src_pcd = make_point_cloud(input_dict['pcd0'][0].detach().cpu().numpy())
+                tgt_pcd = make_point_cloud(input_dict['pcd1'][0].detach().cpu().numpy())
+                model_timer.tic()
+                initial_trans = TEASER(src_pcd, tgt_pcd, src_features, tgt_features)
+                model_time = model_timer.toc()
+                pred_trans = torch.eye(4)[None].to(src_keypts.device)
+                pred_trans[:, :4, :4] = torch.from_numpy(initial_trans)
+                pred_labels = torch.zeros_like(gt_labels) + np.nan                
             
             else:
                 assert False, "unkown value for args.algo: " + args.algo
@@ -271,7 +282,7 @@ def get_args_and_config():
     parser.add_argument('--save_npz', default=False, type=str2bool)
     parser.add_argument('--fcgf_weights_file', type=str, default=None, help='file containing FCGF network weights')
     parser.add_argument('--dataset', type=str, default=None, help='name of dataset for testing')
-    parser.add_argument('--algo', type=str, default='PointDSC', help='algorithm to use for testing', choices=['PointDSC', 'RANSAC'])
+    parser.add_argument('--algo', type=str, default='PointDSC', help='algorithm to use for testing', choices=['PointDSC', 'RANSAC', 'TEASER'])
     parser.add_argument('--max_samples', type=int, default=None, help='maximum nuimber of samples to use in test')
     args = parser.parse_args()
 
@@ -283,7 +294,7 @@ def get_args_and_config():
     _, dataset_name = get_dataset_name(args.dataset)
     args.outdir = generate_output_dir(dataset_name, 'Test', args.start_time)
     
-    if args.algo == 'RANSAC':
+    if args.algo != 'PointDSC':
         config = edict({
             'in_dim': 6, 
             'inlier_threshold': 0.6, 
