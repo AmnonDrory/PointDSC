@@ -8,7 +8,7 @@ if computer_name in ['ad-2021']:
   ApolloSouthbay_dir = '/home/ad/old_drive/data/apollo_subsets/apollo_meta/'
   balanced_sets_base_dir = '/home/ad/old_drive/home/ad/PycharmProjects/BalancedDatasetGenerator/output/balanced_sets/'
   LyftLEVEL5_dir =  '/home/ad/old_drive/data/LyftLEVEL5/'
-  NuScenes_dir =  '/home/ad/old_drive/data/NuScenes/'
+  NuScenes_dir =  '/home/ad/old_drive/data/from_deep3d/NuScenes/'
   cache_dir =  '/home/ad/old_drive/data/balanced_sets_cache/'
 elif computer_name in ['deep3d']:
   kitti_dir = '/data/amnon/datasets/kitti/dataset/'

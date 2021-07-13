@@ -157,9 +157,7 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             elif args.algo == 'TEASER':                
                 src_pcd = make_point_cloud(input_dict['pcd0'][0].detach().cpu().numpy())
                 tgt_pcd = make_point_cloud(input_dict['pcd1'][0].detach().cpu().numpy())
-                model_timer.tic()
-                initial_trans = TEASER(src_pcd, tgt_pcd, src_features, tgt_features)
-                model_time = model_timer.toc()
+                initial_trans, model_time = TEASER(src_pcd, tgt_pcd, src_features, tgt_features)
                 pred_trans = torch.eye(4)[None].to(src_keypts.device)
                 pred_trans[:, :4, :4] = torch.from_numpy(initial_trans)
                 pred_labels = torch.zeros_like(gt_labels) + np.nan                

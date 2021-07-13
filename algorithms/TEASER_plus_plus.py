@@ -3,6 +3,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 from copy import deepcopy
 import torch
+from time import time
 import teaserpp_python
 
 def pcd2xyz(pcd):
@@ -110,6 +111,7 @@ def TEASER(A_pcd, B_pcd, A_feats, B_feats, voxel_size=0.3):
     B_corr = B_xyz[:,corrs_B] # np array of size 3 by num_corrs
 
     # robust global registration using TEASER++
+    start_time = time()
     NOISE_BOUND = voxel_size
     teaser_solver = get_teaser_solver(NOISE_BOUND)
     teaser_solver.solve(A_corr,B_corr)
@@ -117,7 +119,8 @@ def TEASER(A_pcd, B_pcd, A_feats, B_feats, voxel_size=0.3):
     R_teaser = solution.rotation
     t_teaser = solution.translation
     T_teaser = Rt2T(R_teaser,t_teaser)
+    elapsed_time = time() - start_time
 
     print(f"T_teaser={T_teaser}") # AD DEL
 
-    return T_teaser    
+    return T_teaser, elapsed_time
