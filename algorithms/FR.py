@@ -87,7 +87,7 @@ def FR(A,B, A_feat, B_feat):
                                     corres_idx0,
                                     corres_idx1,
                                     2 * voxel_size,
-                                    num_iterations=650*10**3)
+                                    num_iterations=500*10**3)
 
     # 4. estimate motion using all inlier pairs:
     corres_idx0_ = corres_idx0_orig.detach().numpy()
