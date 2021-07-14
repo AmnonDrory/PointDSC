@@ -11,6 +11,7 @@ import numpy as np
 
 from dataloader.base_loader import *
 from dataloader.transforms import *
+from dataloader.paths import kitti_dir
 from util.pointcloud import get_matching_indices, make_open3d_point_cloud
 
 
@@ -247,8 +248,8 @@ class KITTINMPairDataset(KITTIPairDataset):
                manual_seed=False,
                config=None,
                rank=None):
-    self.root = root = os.path.join(config.kitti_dir, 'dataset')
-    self.icp_path = os.path.join(config.kitti_dir, config.icp_cache_path)
+    self.root = root = kitti_dir
+    self.icp_path = root.replace('kitti/dataset','kitti/icp')
     try:
       os.mkdir(self.icp_path)
     except OSError as error:
