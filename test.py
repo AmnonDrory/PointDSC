@@ -17,6 +17,7 @@ from datasets.KITTI import KITTIDataset
 from utils.pointcloud import make_point_cloud
 from evaluation.benchmark_utils import set_seed, icp_refine
 from utils.timer import Timer
+from shutil import move
 
 from dataloader.data_loaders import make_data_loader, get_dataset_name
 from datasets.LidarFeatureExtractor import LidarFeatureExtractor
@@ -43,9 +44,15 @@ logging.basicConfig(level=logging.INFO, format="")
 def analyze_stats(args):    
     
     file_base = args.tmp_file_base
-    file_names = glob(file_base + '_res_*.npy')
+    file_names = glob(file_base + '*')
+    res_files = []
+    for f in file_names:
+        if '_res_' in f:
+            res_files.append(f)
+        elif 'success_or_failure' in f:
+            move(f, args.outdir + 'TEASER_success_or_failure.txt')
     arrs_list = []
-    for filename in file_names:
+    for filename in res_files:
         stats = np.load(filename)        
         arrs_list.append(stats)
     all_stats = np.vstack(arrs_list)
@@ -55,19 +62,20 @@ def analyze_stats(args):
     allpair_stats = all_stats
     allpair_average = allpair_stats.mean(0)
     correct_pair_average = allpair_stats[allpair_stats[:, 0] == 1].mean(0)
+    model_time_99 = np.quantile(allpair_stats[:,9], 0.99)
 
     logging.info(f"*"*40)
     logging.info(f"All {allpair_stats.shape[0]} pairs, Mean Success Rate={allpair_average[0]*100:.2f}%, Mean Re={correct_pair_average[1]:.2f}, Mean Te={correct_pair_average[2]:.2f}")
     logging.info(f"\tInput:  Mean Inlier Num={allpair_average[3]:.2f}(ratio={allpair_average[4]*100:.2f}%)")
     logging.info(f"\tOutput: Mean Inlier Num={allpair_average[5]:.2f}(precision={allpair_average[6]*100:.2f}%, recall={allpair_average[8]*100:.2f}%, f1={allpair_average[8]*100:.2f}%)")
-    logging.info(f"\tMean model time: {allpair_average[9]:.2f}s, Mean icp time: {allpair_average[11]:.2f}s, Mean data time: {allpair_average[10]:.2f}s")
+    logging.info(f"\tMean model time: {allpair_average[9]:.2f}s, 99% model time: {model_time_99:.2f}, Mean icp time: {allpair_average[11]:.2f}s, Mean data time: {allpair_average[10]:.2f}s")
 
     num_total = allpair_stats.shape[0]
     num_failed_algo = (allpair_stats[:,0] == 0).sum()
     num_failed_icp = (allpair_stats[:,12] == 0).sum()
     
     s = "\n"
-    s += f"{args.algo}     | recall: {100*allpair_average[0]:.2f}%, #failed/#total: {num_failed_algo}/{num_total}, TE(cm): { correct_pair_average[2]:.3f}, RE(deg): { correct_pair_average[1]:.3f}, reg time(s): {allpair_average[9]:.3f}\n"
+    s += f"{args.algo}     | recall: {100*allpair_average[0]:.2f}%, #failed/#total: {num_failed_algo}/{num_total}, TE(cm): { correct_pair_average[2]:.3f}, RE(deg): { correct_pair_average[1]:.3f}, mean reg time(s): {allpair_average[9]:.3f}, 99% reg time(s): {model_time_99:.3f}\n"
     s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}, Total time(s) {allpair_average[9]+allpair_average[11]:.3f}\n"
     logging.info(s)
 

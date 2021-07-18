@@ -47,6 +47,15 @@ def do_TEASER_inner(A_corr,B_corr, args):
         T = np.eye(4)
         inner_time = MAX_WAIT
 
+    try:    
+        os.remove(f'{args.tmp_file_base}_A_corr.npy')
+        os.remove(f'{args.tmp_file_base}_B_corr.npy')
+        os.remove(f"{args.tmp_file_base}_latest_pid.txt")
+        os.remove(f'{args.tmp_file_base}_T.npy')
+        os.remove(f'{args.tmp_file_base}_inner_time.npy')
+    except FileNotFoundError:
+        pass
+
     return T, inner_time
 
 def go(A_corr,B_corr):
