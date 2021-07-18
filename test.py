@@ -43,7 +43,7 @@ logging.basicConfig(level=logging.INFO, format="")
 def analyze_stats(args):    
     
     file_base = args.tmp_file_base
-    file_names = glob(file_base + '*.npy')
+    file_names = glob(file_base + '_res_*.npy')
     arrs_list = []
     for filename in file_names:
         stats = np.load(filename)        
@@ -157,7 +157,7 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             elif args.algo == 'TEASER':                
                 src_pcd = make_point_cloud(input_dict['pcd0'][0].detach().cpu().numpy())
                 tgt_pcd = make_point_cloud(input_dict['pcd1'][0].detach().cpu().numpy())
-                initial_trans, model_time = TEASER(src_pcd, tgt_pcd, src_features, tgt_features)
+                initial_trans, model_time = TEASER(src_pcd, tgt_pcd, src_features, tgt_features, args)
                 pred_trans = torch.eye(4)[None].to(src_keypts.device)
                 pred_trans[:, :4, :4] = torch.from_numpy(initial_trans)
                 pred_labels = torch.zeros_like(gt_labels) + np.nan                
@@ -237,7 +237,7 @@ def eval_KITTI(model, config, world_size, seed, rank, args):
     
     stats = eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank)
 
-    np.save(f"{args.tmp_file_base}_{world_size}_{rank}.npy", stats)
+    np.save(f"{args.tmp_file_base}_res_{world_size}_{rank}.npy", stats)
 
 def generate_output_dir(dataset_name, phase, start_time=None):
     if start_time is not None:
@@ -281,6 +281,7 @@ def get_args_and_config():
     parser.add_argument('--fcgf_weights_file', type=str, default=None, help='file containing FCGF network weights')
     parser.add_argument('--dataset', type=str, default=None, help='name of dataset for testing')
     parser.add_argument('--algo', type=str, default='PointDSC', help='algorithm to use for testing', choices=['PointDSC', 'RANSAC', 'TEASER'])
+    parser.add_argument('--mode', type=str, default=None, help='algorithm mode')
     parser.add_argument('--max_samples', type=int, default=None, help='maximum nuimber of samples to use in test')
     args = parser.parse_args()
 
@@ -333,7 +334,7 @@ def main():
     if args.do_analysis:
 	    analyze_stats(args)            
     
-	    tmp_files = glob(args.tmp_file_base + '*')
+	    tmp_files = glob(args.tmp_file_base + '_res_*')
 	    for f in tmp_files:
 	        os.remove(f)
 

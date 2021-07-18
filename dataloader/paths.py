@@ -5,7 +5,7 @@ computer_name = os.uname()[1]
 if computer_name in ['ad-2021']:
   kitti_dir = '/home/ad/old_drive/data/kitti/dataset/'
   fcgf_weights_file = '/home/ad/old_drive/data/FCGF/ResUNetBN2C-feat32-kitti-v0.3.pth'
-  ApolloSouthbay_dir = '/home/ad/old_drive/data/apollo_subsets/apollo_meta/'
+  ApolloSouthbay_dir = '/home/ad/old_drive/data/from_deep3d/apollo/'
   balanced_sets_base_dir = '/home/ad/old_drive/home/ad/PycharmProjects/BalancedDatasetGenerator/output/balanced_sets/'
   LyftLEVEL5_dir =  '/home/ad/old_drive/data/LyftLEVEL5/'
   NuScenes_dir =  '/home/ad/old_drive/data/from_deep3d/NuScenes/'
