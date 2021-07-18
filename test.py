@@ -149,7 +149,7 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
 
             elif args.algo == 'RANSAC':
                 
-                initial_trans, model_time, src_pcd, tgt_pcd = FR(input_dict['pcd0'][0], input_dict['pcd1'][0], src_features, tgt_features)
+                initial_trans, model_time, src_pcd, tgt_pcd = FR(input_dict['pcd0'][0], input_dict['pcd1'][0], src_features, tgt_features, args)
                 pred_trans = torch.eye(4)[None].to(src_keypts.device)
                 pred_trans[:, :4, :4] = torch.from_numpy(initial_trans)
                 pred_labels = torch.zeros_like(gt_labels) + np.nan
