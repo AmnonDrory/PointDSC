@@ -24,7 +24,10 @@ from datasets.LidarFeatureExtractor import LidarFeatureExtractor
 from dataloader.base_loader import CollationFunctionFactory
 from torch.utils.data import DataLoader
 from algorithms.FR import FR
-from algorithms.TEASER_plus_plus import TEASER
+try:
+    from algorithms.TEASER_plus_plus import TEASER
+except Exception as E:
+    print(E)
 
 import torch.multiprocessing as mp
 import torch.distributed as dist
