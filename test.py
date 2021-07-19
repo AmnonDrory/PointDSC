@@ -301,7 +301,7 @@ def get_args_and_config():
     parser.add_argument('--algo', type=str, default='PointDSC', help='algorithm to use for testing', choices=['PointDSC', 'RANSAC', 'TEASER'])
     parser.add_argument('--mode', type=str, default=None, help='algorithm mode')
     parser.add_argument('--max_samples', type=int, default=None, help='maximum nuimber of samples to use in test')
-    parser.add_argument('--special', type=int, default=None, help='special tasks')
+    parser.add_argument('--special', type=str, default=None, help='special tasks')
     args = parser.parse_args()
 
     args.start_time    = start_time      
