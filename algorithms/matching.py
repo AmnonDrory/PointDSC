@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from copy import deepcopy
 
 def find_nn(F0, F1):
     nn_max_n = 250
@@ -65,3 +66,13 @@ def nn_to_mutual(feats0, feats1, corres_idx0, corres_idx1):
     inv_corres_idx0, inv_corres_idx1)
 
     return final_corres_idx0, final_corres_idx1
+
+def measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size):
+    corres_idx0_ = corres_idx0.detach().numpy()
+    corres_idx1_ = corres_idx1.detach().numpy()
+    pcd0_trans = deepcopy(pcd0)
+    pcd0_trans.transform(T_gt)
+    
+    dist2 = np.sum((np.array(pcd0_trans.points)[corres_idx0_,:] - np.array(pcd1.points)[corres_idx1_,:])**2, axis=1)
+    is_close = dist2 < (2*voxel_size)**2
+    return float(is_close.sum()) / len(is_close)

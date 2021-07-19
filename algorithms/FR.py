@@ -10,7 +10,7 @@ import torch
 import open3d as o3d
 from copy import deepcopy
 from time import time
-from algorithms.matching import find_nn, nn_to_mutual
+from algorithms.matching import find_nn, nn_to_mutual, measure_inlier_ratio
 
 def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0):
     F0 = fcgf_feats0[corres_idx0,:]
@@ -52,7 +52,7 @@ def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_i
 
     return corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig
 
-def FR(A,B, A_feat, B_feat, args):    
+def FR(A,B, A_feat, B_feat, args, T_gt):    
 
     voxel_size = 0.3
     
@@ -76,6 +76,8 @@ def FR(A,B, A_feat, B_feat, args):
 
         # 1. Coarse correspondences
         corres_idx0, corres_idx1 = find_nn(fcgf_feats0, fcgf_feats1)
+        num_pairs_init = len(corres_idx0)
+        inlier_ratio_init = measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)
 
         start_time = time()
 
@@ -88,6 +90,12 @@ def FR(A,B, A_feat, B_feat, args):
         else:
             assert False, "when running with algo==RANSAC, must define mode to either DFR or MFR"
 
+        filter_time = time() - start_time
+
+        num_pairs_filtered = len(corres_idx0)
+        inlier_ratio_filtered = measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)            
+
+    start_time = time()
     # 3. Perform RANSAC
     T = RANSAC_registration(pcd0,
                                     pcd1,
@@ -110,9 +118,10 @@ def FR(A,B, A_feat, B_feat, args):
     p2p = o3d.pipelines.registration.TransformationEstimationPointToPoint()
     T = p2p.compute_transformation(pcd0, pcd1, corres_)
 
-    elapsed_time = time() - start_time
+    algo_time = time() - start_time
+    elapsed_time = filter_time + algo_time
 
-    return T, elapsed_time, pcd0, pcd1
+    return T, elapsed_time, pcd0, pcd1, num_pairs_init, inlier_ratio_init, num_pairs_filtered, inlier_ratio_filtered
 
 
 def RANSAC_registration(pcd0, pcd1, idx0, idx1,

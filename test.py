@@ -75,6 +75,7 @@ def analyze_stats(args):
     num_failed_icp = (allpair_stats[:,12] == 0).sum()
     
     s = "\n"
+    s += f"{allpair_average[15]:.0f} nn pairs ({allpair_average[16]:.2f} inliers), {allpair_average[17]:.0f} filtered pairs ({allpair_average[18]:.2f} inliers)\n"
     s += f"{args.algo}     | recall: {100*allpair_average[0]:.2f}%, #failed/#total: {num_failed_algo}/{num_total}, TE(cm): { correct_pair_average[2]:.3f}, RE(deg): { correct_pair_average[1]:.3f}, mean reg time(s): {allpair_average[9]:.3f}, 99% reg time(s): {model_time_99:.3f}\n"
     s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}, Total time(s) {allpair_average[9]+allpair_average[11]:.3f}\n"
     logging.info(s)
@@ -93,8 +94,8 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
         num_pair = min(num_pair, args.max_samples)
     # 0.success, 1.RE, 2.TE, 3.input inlier number, 4.input inlier ratio,  5. output inlier number 
     # 6. output inlier precision, 7. output inlier recall, 8. output inlier F1 score 9. model_time, 10. data_time 11. icp_time
-    # 12. recall_icp 13. RE_icp 14. TE_icp 15. drive 16.t0 17.t1
-    stats = np.zeros([num_pair, 18])
+    # 12. recall_icp 13. RE_icp 14. TE_icp 15.num_pairs_init 16.inlier_ratio_init 17.num_pairs_filtered 18.inlier_ratio_filtered 19. drive 20.t0 21.t1
+    stats = np.zeros([num_pair, 22])
     dloader_iter = dloader.__iter__()
     class_loss = ClassificationLoss()
     evaluate_metric = TransformationLoss(re_thre=config.re_thre, te_thre=config.te_thre)
@@ -121,7 +122,8 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             #################################
             # forward pass 
             #################################
-            if args.algo == 'PointDSC':
+            num_pairs_init, inlier_ratio_init, num_pairs_filtered, inlier_ratio_filtered = 0,0,0,0
+            if args.algo == 'PointDSC':                
                 model_timer.tic()
                 res = model(data)
                 pred_trans, pred_labels = res['final_trans'], res['final_labels']
@@ -157,7 +159,9 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
 
             elif args.algo == 'RANSAC':
                 
-                initial_trans, model_time, src_pcd, tgt_pcd = FR(input_dict['pcd0'][0], input_dict['pcd1'][0], src_features, tgt_features, args)
+                initial_trans, model_time, src_pcd, tgt_pcd, num_pairs_init, \
+                     inlier_ratio_init, num_pairs_filtered, inlier_ratio_filtered = \
+                         FR(input_dict['pcd0'][0], input_dict['pcd1'][0], src_features, tgt_features, args, gt_trans[0,...].detach().cpu().numpy())
                 pred_trans = torch.eye(4)[None].to(src_keypts.device)
                 pred_trans[:, :4, :4] = torch.from_numpy(initial_trans)
                 pred_labels = torch.zeros_like(gt_labels) + np.nan
@@ -203,10 +207,13 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             stats[i, 12] = float(recall_icp / 100.0)                      # success
             stats[i, 13] = float(Re_icp)                                  # Re (deg)
             stats[i, 14] = float(Te_icp)                                  # Te (cm)
-            stats[i, 15] = input_dict['extra_packages'][0]['drive']
-            stats[i, 16] = input_dict['extra_packages'][0]['t0']
-            stats[i, 17] = input_dict['extra_packages'][0]['t1']
-
+            stats[i, 15] = num_pairs_init
+            stats[i, 16] = inlier_ratio_init 
+            stats[i, 17] = num_pairs_filtered
+            stats[i, 18] = inlier_ratio_filtered 
+            stats[i, 19] = input_dict['extra_packages'][0]['drive']
+            stats[i, 20] = input_dict['extra_packages'][0]['t0']
+            stats[i, 21] = input_dict['extra_packages'][0]['t1']
 
             if rank==0:
                 print(f"{time.strftime('%m/%d %H:%M:%S')} Finished pair:{i}/{num_pair}", flush=True)
@@ -276,7 +283,7 @@ def get_args_and_config():
         sys.argv = sys.argv[5:]
     else:
         start_time=None
-        tmp_file_base = tempfile.gettempdir() + '/test_%16d' % int(np.random.rand()*10**16)    
+        tmp_file_base = tempfile.gettempdir() + '/test_%016d' % int(np.random.rand()*10**16)    
         world_size = 1
         rank = 0 
         do_analysis = True
