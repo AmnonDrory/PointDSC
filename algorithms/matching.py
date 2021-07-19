@@ -9,10 +9,10 @@ def find_nn(F0, F1):
         # Fast implementation with torch.einsum()
         with torch.no_grad():      
             # L2 distance:
-            #   dist2 = torch.sum(f0**2, dim=1).reshape([-1,1]) + torch.sum(f1**2, dim=1).reshape([1,-1]) -2*torch.einsum('ac,bc->ab', f0, f1)
-            #   dist = dist2.clamp_min(1e-30).sqrt_()
+            dist2 = torch.sum(f0**2, dim=1).reshape([-1,1]) + torch.sum(f1**2, dim=1).reshape([1,-1]) -2*torch.einsum('ac,bc->ab', f0, f1)
+            dist = dist2.clamp_min(1e-30).sqrt_()
             # Cosine distance:
-            dist = 1-torch.einsum('ac,bc->ab', f0, f1)                  
+            #   dist = 1-torch.einsum('ac,bc->ab', f0, f1)                  
             min_dist, ind = dist.min(dim=1, keepdim=True)      
         return ind
     
