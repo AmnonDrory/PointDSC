@@ -93,7 +93,13 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         filter_time = time() - start_time
 
         num_pairs_filtered = len(corres_idx0)
-        inlier_ratio_filtered = measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)            
+        inlier_ratio_filtered = measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)
+
+    if args.special == 'inlier_only':
+        T = np.eye(4)
+        elapsed_time = 0
+        return T, elapsed_time, pcd0, pcd1, num_pairs_init, inlier_ratio_init, num_pairs_filtered, inlier_ratio_filtered
+
 
     start_time = time()
     # 3. Perform RANSAC
