@@ -78,7 +78,7 @@ def analyze_stats(args):
     num_failed_icp = (allpair_stats[:,12] == 0).sum()
     
     s = "\n"
-    s += f"{allpair_average[15]:.0f} nn pairs ({allpair_average[16]:.2f} inliers), {allpair_average[17]:.0f} filtered pairs ({allpair_average[18]:.2f} inliers)\n"
+    s += f"{allpair_average[15]:.0f} nn pairs ({allpair_average[16]:.3f} inliers), {allpair_average[17]:.0f} filtered pairs ({allpair_average[18]:.3f} inliers)\n"
     s += f"{args.algo}     | recall: {100*allpair_average[0]:.2f}%, #failed/#total: {num_failed_algo}/{num_total}, TE(cm): { correct_pair_average[2]:.3f}, RE(deg): { correct_pair_average[1]:.3f}, mean reg time(s): {allpair_average[9]:.3f}, 99% reg time(s): {model_time_99:.3f}\n"
     s += f"{args.algo}+ICP | recall: {100*allpair_average[12]:.2f}%, #failed/#total: {num_failed_icp}/{num_total}, TE(cm): {correct_pair_average[14]:.3f}, RE(deg): {correct_pair_average[13]:.3f}, ICP time(s): {allpair_average[11]:.3f}, Total time(s) {allpair_average[9]+allpair_average[11]:.3f}\n"
     logging.info(s)
@@ -302,6 +302,7 @@ def get_args_and_config():
     parser.add_argument('--mode', type=str, default=None, help='algorithm mode')
     parser.add_argument('--max_samples', type=int, default=None, help='maximum nuimber of samples to use in test')
     parser.add_argument('--special', type=str, default=None, help='special tasks')
+    parser.add_argument('--iters', type=int, default=None, help='RANSAC iters')
     args = parser.parse_args()
 
     args.start_time    = start_time      

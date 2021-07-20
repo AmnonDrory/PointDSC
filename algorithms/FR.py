@@ -102,13 +102,18 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
 
 
     start_time = time()
+
+    ransac_iters = 500*10**3
+    if args.iters is not None:
+        ransac_iters = args.iters
+    print(f"ransac_iters={ransac_iters}") # AD DEL
     # 3. Perform RANSAC
     T = RANSAC_registration(pcd0,
                                     pcd1,
                                     corres_idx0,
                                     corres_idx1,
                                     2 * voxel_size,
-                                    num_iterations=500*10**3)
+                                    num_iterations=ransac_iters)
 
     # 4. estimate motion using all inlier pairs:
     corres_idx0_ = corres_idx0_orig.detach().numpy()
