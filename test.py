@@ -180,6 +180,12 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             else:
                 assert False, "unkown value for args.algo: " + args.algo
 
+            if args.special == 'inlier_only':
+                stats[i, 15] = num_pairs_init
+                stats[i, 16] = inlier_ratio_init 
+                stats[i, 17] = num_pairs_filtered
+                stats[i, 18] = inlier_ratio_filtered 
+                continue
 
             icp_timer.tic()
             # change the convension of transforamtion because open3d use left multi.
