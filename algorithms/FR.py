@@ -87,6 +87,8 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         elif args.mode == "MFR":
             corres_idx0_orig, corres_idx1_orig = corres_idx0, corres_idx1
             corres_idx0, corres_idx1 = nn_to_mutual(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
+        elif args.mode == "no_filter":
+            corres_idx0_orig, corres_idx1_orig = corres_idx0, corres_idx1
         else:
             assert False, "when running with algo==RANSAC, must define mode to either DFR or MFR"
 
@@ -94,12 +96,6 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
 
         num_pairs_filtered = len(corres_idx0)
         inlier_ratio_filtered = measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)
-
-    if args.special == 'inlier_only':
-        T = np.eye(4)
-        elapsed_time = 0
-        return T, elapsed_time, pcd0, pcd1, num_pairs_init, inlier_ratio_init, num_pairs_filtered, inlier_ratio_filtered
-
 
     start_time = time()
 
@@ -113,7 +109,8 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
                                     corres_idx0,
                                     corres_idx1,
                                     2 * voxel_size,
-                                    num_iterations=ransac_iters)
+                                    num_iterations=ransac_iters,
+                                    args=args)
 
     # 4. estimate motion using all inlier pairs:
     corres_idx0_ = corres_idx0_orig.detach().numpy()
@@ -136,21 +133,32 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
 
 
 def RANSAC_registration(pcd0, pcd1, idx0, idx1,
-                        distance_threshold, num_iterations):        
+                        distance_threshold, num_iterations, args):        
 
     corres = np.stack((idx0, idx1), axis=1)
     corres = o3d.utility.Vector2iVector(corres)
-
-    result = o3d.pipelines.registration.registration_ransac_based_on_correspondence(
-        pcd0, 
-        pcd1,
-        corres, 
-        estimation_method=o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
-        max_correspondence_distance=distance_threshold, 
-        ransac_n=4,
-        checkers=[o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength()],
-        criteria=o3d.pipelines.registration.RANSACConvergenceCriteria(max_iteration=num_iterations, confidence=0.9999)
-    )
+    
+    if args.ELC: # use edge-length constraints:
+        result = o3d.pipelines.registration.registration_ransac_based_on_correspondence(
+            pcd0, 
+            pcd1,
+            corres, 
+            estimation_method=o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
+            max_correspondence_distance=distance_threshold, 
+            ransac_n=4,
+            checkers=[o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength()],
+            criteria=o3d.pipelines.registration.RANSACConvergenceCriteria(max_iteration=num_iterations, confidence=0.9999)
+        )
+    else:
+        result = o3d.pipelines.registration.registration_ransac_based_on_correspondence(
+            pcd0, 
+            pcd1,
+            corres, 
+            estimation_method=o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
+            max_correspondence_distance=distance_threshold, 
+            ransac_n=4,         
+            criteria=o3d.pipelines.registration.RANSACConvergenceCriteria(max_iteration=num_iterations, confidence=0.9999)
+        )
 
     return result.transformation
 

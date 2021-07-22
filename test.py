@@ -180,13 +180,6 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             else:
                 assert False, "unkown value for args.algo: " + args.algo
 
-            if args.special == 'inlier_only':
-                stats[i, 15] = num_pairs_init
-                stats[i, 16] = inlier_ratio_init 
-                stats[i, 17] = num_pairs_filtered
-                stats[i, 18] = inlier_ratio_filtered 
-                continue
-
             icp_timer.tic()
             # change the convension of transforamtion because open3d use left multi.
             refined_T = o3d.pipelines.registration.registration_icp(
@@ -306,9 +299,9 @@ def get_args_and_config():
     parser.add_argument('--dataset', type=str, default=None, help='name of dataset for testing')
     parser.add_argument('--algo', type=str, default='PointDSC', help='algorithm to use for testing', choices=['PointDSC', 'RANSAC', 'TEASER'])
     parser.add_argument('--mode', type=str, default=None, help='algorithm mode')
-    parser.add_argument('--max_samples', type=int, default=None, help='maximum nuimber of samples to use in test')
-    parser.add_argument('--special', type=str, default=None, help='special tasks')
+    parser.add_argument('--max_samples', type=int, default=None, help='maximum nuimber of samples to use in test')    
     parser.add_argument('--iters', type=int, default=None, help='RANSAC iters')
+    parser.add_argument('--ELC', type=str2bool, default=True, help='use edge-length constraint with RANSAC')
     args = parser.parse_args()
 
     args.start_time    = start_time      
