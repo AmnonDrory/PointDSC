@@ -2,7 +2,7 @@
     # Copyright (c) Chris Choy (chrischoy@ai.stanford.edu) and Wei Dong (weidong@andrew.cmu.edu)
 
 __doc__ = """
-Implementation of the FCGF feature-space distance filtered RANSAC algorithm (FR).
+Implementation of the fast RANSAC algorithms DFR (FCGF feature-space distance filtered) and MFR (mutual-nearest-neighbor filtered).
 """
 
 import numpy as np
@@ -12,7 +12,7 @@ from copy import deepcopy
 from time import time
 from algorithms.matching import find_nn, nn_to_mutual, measure_inlier_ratio
 
-def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0):
+def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args):
     F0 = fcgf_feats0[corres_idx0,:]
     F1 = fcgf_feats1[corres_idx1,:]
     feat_dist = torch.sqrt(torch.sum((F0-F1)**2,axis=1))        
@@ -44,6 +44,12 @@ def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_i
             keep[is_quad_inds] = True
             num_remaining_samples -= len(is_quad_inds)
             num_remaining_quads -= 1
+
+    if not(args.spatial):
+        num_to_keep = keep.sum()
+        ord = torch.argsort(feat_dist.cpu())
+        keep = np.zeros(len(feat_dist), dtype=bool)
+        keep[ord[:num_to_keep]] = True
 
     corres_idx0_orig = deepcopy(corres_idx0)
     corres_idx1_orig = deepcopy(corres_idx1)
@@ -83,7 +89,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
 
         # 2. Filter by distances in feature space
         if args.mode == "DFR":
-            corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0)
+            corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args)
         elif args.mode == "MFR":
             corres_idx0_orig, corres_idx1_orig = corres_idx0, corres_idx1
             corres_idx0, corres_idx1 = nn_to_mutual(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)

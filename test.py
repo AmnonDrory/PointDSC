@@ -302,6 +302,7 @@ def get_args_and_config():
     parser.add_argument('--max_samples', type=int, default=None, help='maximum nuimber of samples to use in test')    
     parser.add_argument('--iters', type=int, default=None, help='RANSAC iters')
     parser.add_argument('--ELC', type=str2bool, default=True, help='use edge-length constraint with RANSAC')
+    parser.add_argument('--spatial', type=str2bool, default=True, help='in DFR, enfore spatial spread')
     args = parser.parse_args()
 
     args.start_time    = start_time      
