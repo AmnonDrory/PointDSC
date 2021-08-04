@@ -55,23 +55,11 @@ class KITTIDataset(data.Dataset):
         # compute ground truth transformation
         orig_trans = data['gt_trans']
         
-        # AD OBSERVATION - dramatic augmentation of the xyz clouds, AFTER the
-        #           FCGF features have already been calculated. This is
-        #           not realistic, it gives FCGF oracle level data. 
-
         # data augmentation
         if self.split == 'train':
             src_keypts += np.random.rand(src_keypts.shape[0], 3) * 0.05
             tgt_keypts += np.random.rand(tgt_keypts.shape[0], 3) * 0.05
         
-        # AD OBSERVATION: very dramatic rotation, not reasonable for 
-        #                 automotive lidar datasets, e.g. kitti. Would be
-        #                 more reasonable to limt rotation to almost-planar
-
-        # AD OBSERVATION: this augmentation is also performed on validation set. Therefore, validation outputs are
-        # not deterministic. For test set the augmentation parameters are set to 0, therefore the
-        # augmentation functions do nothing.
-
         aug_R = rotation_matrix(self.augment_axis, self.augment_rotation)
         aug_T = translation_matrix(self.augment_translation)
         aug_trans = integrate_trans(aug_R, aug_T)
@@ -83,20 +71,18 @@ class KITTIDataset(data.Dataset):
         N_tgt = tgt_features.shape[0]
         src_sel_ind = np.arange(N_src)
         tgt_sel_ind = np.arange(N_tgt)
-        # AD OBSERVATION: for the test set, determinism here is achieved by setting the seed
+        
         if self.num_node != 'all' and N_src > self.num_node:
             src_sel_ind = np.random.choice(N_src, self.num_node, replace=False)
         if self.num_node != 'all' and N_tgt > self.num_node:
             tgt_sel_ind = np.random.choice(N_tgt, self.num_node, replace=False)
 
-        # AD OBSERVATION: extreme downsampling of clouds, from ~20K to 1K. 
         src_desc = src_features[src_sel_ind, :]
         tgt_desc = tgt_features[tgt_sel_ind, :]
         src_keypts = src_keypts[src_sel_ind, :]
         tgt_keypts = tgt_keypts[tgt_sel_ind, :]
 
         # construct the correspondence set by mutual nn in feature space.
-        # AD OBSERVATION: interesting definition of distance
         distance = np.sqrt(2 - 2 * (src_desc @ tgt_desc.T) + 1e-6)
         source_idx = np.argmin(distance, axis=1)
         if self.use_mutual:

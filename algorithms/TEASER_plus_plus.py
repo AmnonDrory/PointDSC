@@ -123,8 +123,6 @@ def TEASER(A_pcd, B_pcd, A_feats, B_feats, args):
         T_teaser, inner_time = go(A_corr,B_corr)
     
     elapsed_time = correspondence_time + inner_time
-    print(f"elapsed_time={elapsed_time}") # AD DEL
-    print(f"T_teaser={T_teaser}") # AD DEL
 
     return T_teaser, elapsed_time
 

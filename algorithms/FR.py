@@ -108,7 +108,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
     ransac_iters = 500*10**3
     if args.iters is not None:
         ransac_iters = args.iters
-    print(f"ransac_iters={ransac_iters}") # AD DEL
+
     # 3. Perform RANSAC
     T = RANSAC_registration(pcd0,
                                     pcd1,

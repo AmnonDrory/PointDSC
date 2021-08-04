@@ -22,11 +22,8 @@ import torch.distributed as dist
 
 def main():
     config = get_config()
-    dconfig = vars(config)
-
-    if True: # AD UNDO
-        #dconfig['batch_size'] = 3 
-        dconfig['num_workers'] = 2
+    dconfig = vars(config)    
+    dconfig['num_workers'] = 2
 
     for k in dconfig:
         print(f"    {k}: {dconfig[k]}")
