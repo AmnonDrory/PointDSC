@@ -11,29 +11,76 @@ BALANCED_SETS_PATH = balanced_sets_base_dir
 CACHE_DIR = cache_dir # set to None to avoid caching point-clouds
 
 class Apollo_utils():
+    def __init__(self):
+        self.find_session_paths()
 
+    def find_session_paths(self):
+                
+        keys = [
+            "MapData/HighWay237/2018-10-05/",
+            "MapData/SunnyvaleBigloop/Caspian_and_Geneva/2017-12-13/",
+            "MapData/SunnyvaleBigloop/Borrgas/2017-12-13/",
+            "MapData/SunnyvaleBigloop/Java/2017-12-13/",
+            "MapData/SunnyvaleBigloop/Mathilda_Moffet/2017-12-28/",
+            "MapData/SunnyvaleBigloop/Crossman/2017-12-13/",
+            "MapData/SunnyvaleBigloop/Mathilda_Carribean/2017-12-14/",
+            "MapData/SunnyvaleBigloop/Bordeaux/2017-12-13/",
+            "MapData/MathildaAVE/2018-09-25/",
+            "MapData/SanJoseDowntown/2018-10-02/",
+            "MapData/BaylandsToSeafood/2018-09-26/",
+            "MapData/ColumbiaPark/2018-09-21/2/",
+            "MapData/ColumbiaPark/2018-09-21/4/",
+            "MapData/ColumbiaPark/2018-09-21/1/",
+            "MapData/ColumbiaPark/2018-09-21/3/",
+            "TrainData/HighWay237/2018-10-12/",
+            "TrainData/MathildaAVE/2018-10-04/",
+            "TrainData/SanJoseDowntown/2018-10-11/",
+            "TrainData/BaylandsToSeafood/2018-10-05/",
+            "TrainData/ColumbiaPark/2018-10-03/",
+            "TestData/HighWay237/2018-10-12/",
+            "TestData/SunnyvaleBigloop/2018-10-03/",
+            "TestData/MathildaAVE/2018-10-12/",
+            "TestData/SanJoseDowntown/2018-10-11/2/",
+            "TestData/SanJoseDowntown/2018-10-11/1/",
+            "TestData/BaylandsToSeafood/2018-10-12/",
+            "TestData/ColumbiaPark/2018-10-11/"]
 
-    @staticmethod
-    def dataset_directory():
+        def list_dirs():
+            subdirs = [ORIGINAL_DATASET_PATH]
+            for cur_dir in subdirs:
+                new_dirs = glob(cur_dir + '/*/')
+                for d in new_dirs:
+                    subdirs.append(d)
+            return subdirs
+        
+        subdirs = list_dirs()
+
+        self.session_paths = []        
+        for key in keys:
+            path = []
+            for dir in subdirs:
+                if dir.endswith(key):
+                    path.append(dir)
+
+            if len(path)==0:
+                self.session_paths.append(None)
+            else:
+                assert len(path)==1, "Error: multiple directories match key"
+                self.session_paths.append(path[0])
+
+    def dataset_directory(self):
         return ORIGINAL_DATASET_PATH
 
-    @staticmethod
-    def get_all_session_paths():
-        session_paths_file = Apollo_utils.dataset_directory() + 'session_paths.txt'
-        with open(session_paths_file, "r") as fid:
-            session_paths_relative = fid.read().splitlines()
+    def get_all_session_paths(self):
+        return self.session_paths
 
-        session_paths = [Apollo_utils.dataset_directory() + p for p in session_paths_relative]
-        return session_paths
-
-    @staticmethod
-    def get_session_path(session_ind):
-        session_paths = Apollo_utils.get_all_session_paths()
+    def get_session_path(self, session_ind):
+        session_paths = self.get_all_session_paths()
         return session_paths[session_ind]
 
-    @staticmethod
-    def load_PC(session_ind, index, cache_file=None): 
-        session_path = Apollo_utils.get_session_path(session_ind)
+
+    def load_PC(self, session_ind, index, cache_file=None): 
+        session_path = self.get_session_path(session_ind)
         filename = session_path + "pcds/%d.pcd" % index
         assert os.path.isfile(filename), "Error: could not find file " + filename
         pcd = o3d.io.read_point_cloud(filename)
