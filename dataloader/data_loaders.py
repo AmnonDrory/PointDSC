@@ -9,7 +9,13 @@ from dataloader.kitti_loader import *
 from dataloader.KITTI_balanced_loader import *
 from dataloader.ApolloSouthbay_balanced_loader import *
 from dataloader.NuScenes_balanced_loader import *
-from dataloader.LyftLEVEL5_balanced_loader import *
+try:
+  from dataloader.LyftLEVEL5_balanced_loader import *
+except Exception as E:
+  print("Ignoring exception: " + str(E))
+  class LyftDummy():
+    __name__ = None
+  LyftLEVEL5BalancedPairDataset = LyftDummy()
 
 ALL_DATASETS = [
     ThreeDMatchPairDataset07, ThreeDMatchPairDataset05, ThreeDMatchPairDataset03,
@@ -57,9 +63,11 @@ def get_dataset_name(dataset_nickname):
 
 
 def make_data_loader(dataset_nickname, config, phase, batch_size, rank=0, world_size=1, seed=0, num_workers=0, shuffle=None):
-  assert phase in ['train', 'trainval', 'val', 'test']
+  assert phase in ['train', 'trainval', 'val', 'test', 'validation']
+  if phase == 'validation':
+    phase = 'val'
   if shuffle is None:
-    shuffle = phase != 'test'
+    shuffle = not phase in ['test', 'val']
 
   dataset_name, _ = get_dataset_name(dataset_nickname)
   if dataset_name not in dataset_str_mapping.keys():

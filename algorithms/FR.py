@@ -11,6 +11,7 @@ import open3d as o3d
 from copy import deepcopy
 from time import time
 from algorithms.matching import find_nn, nn_to_mutual, measure_inlier_ratio
+from algorithms.GC_RANSAC import GC_RANSAC
 
 def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args):
     F0 = fcgf_feats0[corres_idx0,:]
@@ -87,7 +88,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
 
         start_time = time()
 
-        # 2. Filter by distances in feature space
+        # 2. Filter correspondences:
         if args.mode == "DFR":
             corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args)
         elif args.mode == "MFR":
@@ -110,13 +111,24 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         ransac_iters = args.iters
 
     # 3. Perform RANSAC
-    T = RANSAC_registration(pcd0,
-                                    pcd1,
-                                    corres_idx0,
-                                    corres_idx1,
-                                    2 * voxel_size,
-                                    num_iterations=ransac_iters,
-                                    args=args)
+    if args.algo == "GC":        
+        A = xyz0_np[corres_idx0,:].astype(np.float32)
+        B = xyz1_np[corres_idx1,:].astype(np.float32)
+        T, GC_time = GC_RANSAC( A,B, 
+                                distance_threshold=2*voxel_size,
+                                num_iterations=ransac_iters,
+                                spatial_coherence_weight=args.spatial_coherence_weight)        
+        
+    elif args.algo == "RANSAC":
+        T = RANSAC_registration(pcd0,
+                                pcd1,
+                                corres_idx0,
+                                corres_idx1,
+                                2 * voxel_size,
+                                num_iterations=ransac_iters,
+                                args=args)
+    else:
+        assert False, "unexpected algo"
 
     # 4. estimate motion using all inlier pairs:
     corres_idx0_ = corres_idx0_orig.detach().numpy()

@@ -27,7 +27,7 @@ from algorithms.FR import FR
 try:
     from algorithms.TEASER_plus_plus import TEASER
 except Exception as E:
-    print(E)
+    print("Ignoring exception: " +str(E))
 
 import torch.multiprocessing as mp
 import torch.distributed as dist
@@ -160,7 +160,7 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
                 tgt_pcd = make_point_cloud(tgt_keypts.detach().cpu().numpy()[0])
                 initial_trans = pred_trans[0].detach().cpu().numpy()
 
-            elif args.algo == 'RANSAC':
+            elif args.algo in ['RANSAC', 'GC']:
                 
                 initial_trans, model_time, src_pcd, tgt_pcd, num_pairs_init, \
                      inlier_ratio_init, num_pairs_filtered, inlier_ratio_filtered = \
@@ -176,7 +176,7 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
                 pred_trans = torch.eye(4)[None].to(src_keypts.device)
                 pred_trans[:, :4, :4] = torch.from_numpy(initial_trans)
                 pred_labels = torch.zeros_like(gt_labels) + np.nan                
-            
+
             else:
                 assert False, "unkown value for args.algo: " + args.algo
 
@@ -238,7 +238,7 @@ def eval_KITTI(model, config, world_size, seed, rank, args):
     DL_config=edict({'voxel_size': 0.3, 
     'positive_pair_search_voxel_size_multiplier': 4, 
     'use_random_rotation': False, 'use_random_scale': False})
-    dloader = make_data_loader(args.dataset, DL_config, 'test', 1, rank, world_size, seed, 0)
+    dloader = make_data_loader(args.dataset, DL_config, args.phase, 1, rank, world_size, seed, 0)
 
     feature_extractor = LidarFeatureExtractor(
             split='test',
@@ -297,12 +297,14 @@ def get_args_and_config():
     parser.add_argument('--save_npz', default=False, type=str2bool)
     parser.add_argument('--fcgf_weights_file', type=str, default=None, help='file containing FCGF network weights')
     parser.add_argument('--dataset', type=str, default=None, help='name of dataset for testing')
-    parser.add_argument('--algo', type=str, default='PointDSC', help='algorithm to use for testing', choices=['PointDSC', 'RANSAC', 'TEASER'])
+    parser.add_argument('--algo', type=str, default='PointDSC', help='algorithm to use for testing', choices=['PointDSC', 'RANSAC', 'TEASER', 'GC'])
     parser.add_argument('--mode', type=str, default=None, help='algorithm mode')
     parser.add_argument('--max_samples', type=int, default=None, help='maximum nuimber of samples to use in test')    
     parser.add_argument('--iters', type=int, default=None, help='RANSAC iters')
     parser.add_argument('--ELC', type=str2bool, default=True, help='use edge-length constraint with RANSAC')
     parser.add_argument('--spatial', type=str2bool, default=True, help='in DFR, enfore spatial spread')
+    parser.add_argument('--phase', type=str, default='test', help='which part of the dataset to use: train, test, or validation', choices=['train', 'validation', 'test'])
+    parser.add_argument('--spatial_coherence_weight', type=float, default=None, help='spatial_coherence_weight for GC_RANSAC')
     args = parser.parse_args()
 
     args.start_time    = start_time      

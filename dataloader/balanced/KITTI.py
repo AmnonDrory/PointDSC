@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
-import pykitti
+try:
+    import pykitti
+except Exception as E:
+    print("Ignoring exception: " + str(E))
 from glob import glob
 import os
 import errno
