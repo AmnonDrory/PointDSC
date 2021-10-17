@@ -2,7 +2,7 @@ from time import time
 import pygcransac
 import numpy as np
 
-def GC_RANSAC(A,B, distance_threshold, num_iterations, spatial_coherence_weight=None):
+def GC_RANSAC(A,B, distance_threshold, num_iterations, spatial_coherence_weight=None, use_sprt=None):
     
     x1y1z1_= np.ascontiguousarray(A)
     x2y2z2_= np.ascontiguousarray(B)
@@ -20,6 +20,8 @@ def GC_RANSAC(A,B, distance_threshold, num_iterations, spatial_coherence_weight=
 
     if spatial_coherence_weight is not None:
         params['spatial_coherence_weight'] = spatial_coherence_weight
+    if use_sprt is not None:
+        params['use_sprt'] = use_sprt        
 
     start_time = time()
     pose_T, mask = pygcransac.findRigidTransform(

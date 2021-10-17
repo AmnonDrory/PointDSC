@@ -305,6 +305,7 @@ def get_args_and_config():
     parser.add_argument('--spatial', type=str2bool, default=True, help='in DFR, enfore spatial spread')
     parser.add_argument('--phase', type=str, default='test', help='which part of the dataset to use: train, test, or validation', choices=['train', 'validation', 'test'])
     parser.add_argument('--spatial_coherence_weight', type=float, default=None, help='spatial_coherence_weight for GC_RANSAC')
+    parser.add_argument('--use_sprt', type=str2bool, default=True, help='use_sprt for GC_RANSAC')
     args = parser.parse_args()
 
     args.start_time    = start_time      

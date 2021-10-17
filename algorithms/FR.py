@@ -117,7 +117,9 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         T, GC_time = GC_RANSAC( A,B, 
                                 distance_threshold=2*voxel_size,
                                 num_iterations=ransac_iters,
-                                spatial_coherence_weight=args.spatial_coherence_weight)        
+                                spatial_coherence_weight=args.spatial_coherence_weight,
+                                use_sprt = args.use_sprt)
+
         
     elif args.algo == "RANSAC":
         T = RANSAC_registration(pcd0,
