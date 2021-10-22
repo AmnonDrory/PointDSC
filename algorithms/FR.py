@@ -19,27 +19,135 @@ def calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corre
     feat_dist = torch.sqrt(torch.sum((F0-F1)**2,axis=1))        
     return feat_dist
 
-def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args):
+def mark_best_buddies(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1):
+    bb_idx0, bb_idx1 = nn_to_mutual(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
+    
+    corres_idx0_np = corres_idx0.detach().cpu().numpy()
+    corres_idx1_np = corres_idx1.detach().cpu().numpy()
+    bb_idx0_np = bb_idx0.detach().cpu().numpy()
+    bb_idx1_np = bb_idx1.detach().cpu().numpy()
+
+    P = 1 + np.max(corres_idx0_np)
+    bb_idx_flat = P*bb_idx1_np + bb_idx0_np
+    corres_idx_flat = P*corres_idx1_np + corres_idx0_np
+    is_bb = np.in1d(corres_idx_flat,bb_idx_flat)
+    num_bb = is_bb.sum()
+    return is_bb, num_bb
+
+
+def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args):
+    # cobination of DFR and MFR.
+    # first step - take the mutual-nearest-neighbors as a core
+    # second step - use a spatial grid to add more pairs, so that every cell has some representatives.
+                    # Seelct additional representatives by distances in feature space 
+    
+    is_bb, num_bb = mark_best_buddies(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
     feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
 
-    NUM_QUADS = 10
-    TOTAL_NUM = 10000 # in practice, about half is selected. 
-    NUM_PER_QUAD = int(np.ceil(TOTAL_NUM/NUM_QUADS**2))
-    def to_quads(X, NUM_QUADS):
+    GRID_WID = 10
+    TOTAL_NUM = args.BFR_factor*num_bb
+    if TOTAL_NUM < num_bb:
+        TOTAL_NUM = num_bb
+
+    def to_quads(X, GRID_WID):
         EPS = 10**-3
         m = torch.min(X)
         M = torch.max(X)
         X_ = (X - m) / (M-m+EPS)
-        res = torch.floor(NUM_QUADS*X_)
+        res = torch.floor(GRID_WID*X_)
         return res
 
-    quadrant_i = to_quads(xyz0[:,0], NUM_QUADS)
-    quadrant_j = to_quads(xyz0[:,1], NUM_QUADS)
+    # 1. Count for each quad the number of pairs and best-buddies in it
+    quadrant_i = to_quads(xyz0[corres_idx0,0], GRID_WID).detach().cpu().numpy()
+    quadrant_j = to_quads(xyz0[corres_idx0,1], GRID_WID).detach().cpu().numpy()    
+    min_per_quad = np.zeros([GRID_WID,GRID_WID]) + np.nan
+    max_per_quad = np.zeros([GRID_WID,GRID_WID]) + np.nan
+    
+    for qi in range(GRID_WID):
+        for qj in range(GRID_WID):            
+            is_quad_mask = (quadrant_i == qi) & (quadrant_j == qj)  
+            min_per_quad[qi,qj] = is_bb[is_quad_mask].sum()
+            max_per_quad[qi,qj] = is_quad_mask.sum()
+
+
+    # 2. Calculate number-per-quad by approximate water-filling: 
+    def apply_height(height):
+        is_dwarf = max_per_quad < height
+        is_giant = height < min_per_quad
+        is_mid = ~is_dwarf & ~is_giant
+        per_quad = is_dwarf*max_per_quad + is_giant*min_per_quad + is_mid*height
+        return per_quad
+    
+    max_height = TOTAL_NUM
+    min_height = 0
+    steps  = 0
+    curr_height = (max_height + min_height) / 2
+    while (np.abs(max_height-min_height)>2):
+        
+        per_quad = apply_height(curr_height)
+        cur_total = per_quad.sum()
+        
+        if cur_total == TOTAL_NUM:
+            break
+        elif cur_total < TOTAL_NUM:
+            min_height = curr_height
+        elif cur_total > TOTAL_NUM:
+            max_height = curr_height
+        
+        curr_height = (max_height + min_height) / 2
+        steps += 1
+
+    per_quad = apply_height(np.round(curr_height))
+
+
+    # 3. Select pairs for each quad. First take best-buddies, then
+    #    take the pairs with the closest feature-space distance.
+    keep = np.zeros(len(feat_dist), dtype=bool)    
+    keep[is_bb] = True
+
+    for qi in range(GRID_WID):
+        for qj in range(GRID_WID):            
+            extra_per_quad = int(per_quad[qi,qj] - min_per_quad[qi,qj])
+            if extra_per_quad > 0:
+                is_quad_mask = (quadrant_i == qi) & (quadrant_j == qj)  
+                is_cand = is_quad_mask & ~is_bb        
+                if per_quad[qi,qj] == max_per_quad[qi,qj]:
+                    keep[is_cand] = True
+                else:
+                    ord = torch.argsort(feat_dist[is_cand]).detach().cpu().numpy()                    
+                    is_cand_inds = is_cand.nonzero()[0]
+                    keep_inds = is_cand_inds[ord[:extra_per_quad]]
+                    keep[keep_inds] = True
+
+    corres_idx0_orig = deepcopy(corres_idx0)
+    corres_idx1_orig = deepcopy(corres_idx1)
+    corres_idx0 = corres_idx0[keep]
+    corres_idx1 = corres_idx1[keep]
+
+    return corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig    
+
+def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args):
+    
+    feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
+
+    GRID_WID = 10
+    TOTAL_NUM = 10000 # in practice, about half is selected. 
+    NUM_PER_QUAD = int(np.ceil(TOTAL_NUM/GRID_WID**2))
+    def to_quads(X, GRID_WID):
+        EPS = 10**-3
+        m = torch.min(X)
+        M = torch.max(X)
+        X_ = (X - m) / (M-m+EPS)
+        res = torch.floor(GRID_WID*X_)
+        return res
+
+    quadrant_i = to_quads(xyz0[:,0], GRID_WID)
+    quadrant_j = to_quads(xyz0[:,1], GRID_WID)
     keep = np.zeros(len(feat_dist), dtype=bool)
-    num_remaining_quads = NUM_QUADS**2
+    num_remaining_quads = GRID_WID**2
     num_remaining_samples = TOTAL_NUM          
-    for qi in range(NUM_QUADS):
-        for qj in range(NUM_QUADS):
+    for qi in range(GRID_WID):
+        for qj in range(GRID_WID):
             samples_per_quad = int(np.ceil(num_remaining_samples / num_remaining_quads))
             is_quad_mask = (quadrant_i == qi) & (quadrant_j == qj)  
             is_quad_inds = is_quad_mask.nonzero(as_tuple=True)[0]
@@ -94,10 +202,12 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
 
         # 2. Filter correspondences:
         if args.mode == "DFR":
-            corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args)
+            corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args)                        
         elif args.mode == "MFR":
             corres_idx0_orig, corres_idx1_orig = corres_idx0, corres_idx1
             corres_idx0, corres_idx1 = nn_to_mutual(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
+        elif args.mode == "BFR":
+            corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args)
         elif args.mode == "no_filter":
             corres_idx0_orig, corres_idx1_orig = corres_idx0, corres_idx1
         else:
