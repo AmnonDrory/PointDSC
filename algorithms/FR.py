@@ -13,10 +13,14 @@ from time import time
 from algorithms.matching import find_nn, nn_to_mutual, measure_inlier_ratio
 from algorithms.GC_RANSAC import GC_RANSAC
 
-def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args):
+def calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1):
     F0 = fcgf_feats0[corres_idx0,:]
     F1 = fcgf_feats1[corres_idx1,:]
     feat_dist = torch.sqrt(torch.sum((F0-F1)**2,axis=1))        
+    return feat_dist
+
+def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args):
+    feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
 
     NUM_QUADS = 10
     TOTAL_NUM = 10000 # in practice, about half is selected. 
@@ -112,13 +116,19 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
 
     # 3. Perform RANSAC
     if args.algo == "GC":        
+        
         A = xyz0_np[corres_idx0,:].astype(np.float32)
         B = xyz1_np[corres_idx1,:].astype(np.float32)
+        if args.prosac:
+            feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1).detach().cpu().numpy()
+            match_quality = -feat_dist
+        else:
+            match_quality = None
+
         T, GC_time = GC_RANSAC( A,B, 
                                 distance_threshold=2*voxel_size,
                                 num_iterations=ransac_iters,
-                                spatial_coherence_weight=args.spatial_coherence_weight,
-                                use_sprt = args.use_sprt)
+                                args=args, match_quality=match_quality)
 
         
     elif args.algo == "RANSAC":
@@ -133,18 +143,19 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         assert False, "unexpected algo"
 
     # 4. estimate motion using all inlier pairs:
-    corres_idx0_ = corres_idx0_orig.detach().numpy()
-    corres_idx1_ = corres_idx1_orig.detach().numpy()
-    pcd0_trans = deepcopy(pcd0)
-    pcd0_trans.transform(T)
-    dist2 = np.sum((np.array(pcd0_trans.points)[corres_idx0_,:] - np.array(pcd1.points)[corres_idx1_,:])**2, axis=1)
-    is_close = dist2 < (2*voxel_size)**2
-    inlier_corres_idx0 = corres_idx0_[is_close]
-    inlier_corres_idx1 = corres_idx1_[is_close]
-    corres = np.stack((inlier_corres_idx0, inlier_corres_idx1), axis=1)
-    corres_ = o3d.utility.Vector2iVector(corres)
-    p2p = o3d.pipelines.registration.TransformationEstimationPointToPoint()
-    T = p2p.compute_transformation(pcd0, pcd1, corres_)
+    if args.algo != "GC": # GC-RANSAC has this built-in, no need to repeat it here
+        corres_idx0_ = corres_idx0_orig.detach().cpu().numpy()
+        corres_idx1_ = corres_idx1_orig.detach().cpu().numpy()
+        pcd0_trans = deepcopy(pcd0)
+        pcd0_trans.transform(T)
+        dist2 = np.sum((np.array(pcd0_trans.points)[corres_idx0_,:] - np.array(pcd1.points)[corres_idx1_,:])**2, axis=1)
+        is_close = dist2 < (2*voxel_size)**2
+        inlier_corres_idx0 = corres_idx0_[is_close]
+        inlier_corres_idx1 = corres_idx1_[is_close]
+        corres = np.stack((inlier_corres_idx0, inlier_corres_idx1), axis=1)
+        corres_ = o3d.utility.Vector2iVector(corres)
+        p2p = o3d.pipelines.registration.TransformationEstimationPointToPoint()
+        T = p2p.compute_transformation(pcd0, pcd1, corres_)
 
     algo_time = time() - start_time
     elapsed_time = filter_time + algo_time
