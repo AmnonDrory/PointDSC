@@ -308,6 +308,7 @@ def get_args_and_config():
     parser.add_argument('--use_sprt', type=str2bool, default=True, help='use_sprt for GC_RANSAC')
     parser.add_argument('--prosac', type=str2bool, default=False, help='use_sprt for GC_RANSAC')
     parser.add_argument('--BFR_factor', type=float, default=1.0, help='factor for BFR')
+    parser.add_argument('--BFR_strict', type=str2bool, default=True, help='strict parameter for BFR')
     args = parser.parse_args()
 
     args.start_time    = start_time      

@@ -43,10 +43,27 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, a
     
     is_bb, num_bb = mark_best_buddies(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
     feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
+    def normalize(tens):
+        m = torch.min(tens)
+        M = torch.max(tens)
+        return (tens - m)/(M-m)
+
+    norm_feat_dist = normalize(feat_dist)
+
+    if not args.BFR_strict:
+        # when not in strict mode, we don't necessarily keep all best buddies. 
+        # instead, when selecting the pairs for each quad, we first select from the 
+        # best-buddies, ordered by feature distance. When we've taken all best buddies, 
+        # we select from the others, separately ordered by feature distance. 
+        # all of this is achieved by adding for all best-buddies an offset of -1
+        # to their normalized feature-distances. After that, normalized feature distances
+        # are in the range [-1,0] for best-buddies, and [0,1] for others. This ensures 
+        # that in each cell, best-buddies are selected first, before other pairs are considered.
+        norm_feat_dist[is_bb] -= 1
 
     GRID_WID = 10
     TOTAL_NUM = args.BFR_factor*num_bb
-    if TOTAL_NUM < num_bb:
+    if args.BFR_strict and (TOTAL_NUM < num_bb):
         TOTAL_NUM = num_bb
 
     def to_quads(X, GRID_WID):
@@ -69,6 +86,8 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, a
             min_per_quad[qi,qj] = is_bb[is_quad_mask].sum()
             max_per_quad[qi,qj] = is_quad_mask.sum()
 
+    if not args.BFR_strict:
+        min_per_quad *= 0
 
     # 2. Calculate number-per-quad by approximate water-filling: 
     def apply_height(height):
@@ -102,19 +121,23 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, a
 
     # 3. Select pairs for each quad. First take best-buddies, then
     #    take the pairs with the closest feature-space distance.
-    keep = np.zeros(len(feat_dist), dtype=bool)    
-    keep[is_bb] = True
+    keep = np.zeros(len(norm_feat_dist), dtype=bool)    
+    if args.BFR_strict:
+        keep[is_bb] = True
 
     for qi in range(GRID_WID):
         for qj in range(GRID_WID):            
             extra_per_quad = int(per_quad[qi,qj] - min_per_quad[qi,qj])
             if extra_per_quad > 0:
                 is_quad_mask = (quadrant_i == qi) & (quadrant_j == qj)  
-                is_cand = is_quad_mask & ~is_bb        
+                if args.BFR_strict:
+                    is_cand = is_quad_mask & ~is_bb        
+                else:
+                    is_cand = is_quad_mask
                 if per_quad[qi,qj] == max_per_quad[qi,qj]:
                     keep[is_cand] = True
                 else:
-                    ord = torch.argsort(feat_dist[is_cand]).detach().cpu().numpy()                    
+                    ord = torch.argsort(norm_feat_dist[is_cand]).detach().cpu().numpy()
                     is_cand_inds = is_cand.nonzero()[0]
                     keep_inds = is_cand_inds[ord[:extra_per_quad]]
                     keep[keep_inds] = True
