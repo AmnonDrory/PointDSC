@@ -61,7 +61,7 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, a
         # that in each cell, best-buddies are selected first, before other pairs are considered.
         norm_feat_dist[is_bb] -= 1
 
-    GRID_WID = 10
+    GRID_WID = args.BFR_grid_wid
     TOTAL_NUM = args.BFR_factor*num_bb
     if args.BFR_strict and (TOTAL_NUM < num_bb):
         TOTAL_NUM = num_bb
