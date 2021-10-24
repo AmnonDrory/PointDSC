@@ -41,7 +41,20 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, a
     # second step - use a spatial grid to add more pairs, so that every cell has some representatives.
                     # Seelct additional representatives by distances in feature space 
     
+    
     is_bb, num_bb = mark_best_buddies(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
+    
+    GRID_WID = args.BFR_grid_wid
+    TOTAL_NUM = args.BFR_factor*num_bb
+    if args.BFR_strict and (TOTAL_NUM < num_bb):
+        TOTAL_NUM = num_bb
+
+    if args.BFR_ignore_bb:
+        assert not args.BFR_strict, "BFR_ignore_bb and BFR_strict are incompatible"
+        is_bb[:] = False
+        num_bb = 0
+
+
     feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
     def normalize(tens):
         m = torch.min(tens)
@@ -60,11 +73,6 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, a
         # are in the range [-1,0] for best-buddies, and [0,1] for others. This ensures 
         # that in each cell, best-buddies are selected first, before other pairs are considered.
         norm_feat_dist[is_bb] -= 1
-
-    GRID_WID = args.BFR_grid_wid
-    TOTAL_NUM = args.BFR_factor*num_bb
-    if args.BFR_strict and (TOTAL_NUM < num_bb):
-        TOTAL_NUM = num_bb
 
     def to_quads(X, GRID_WID):
         EPS = 10**-3
