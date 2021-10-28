@@ -306,11 +306,13 @@ def get_args_and_config():
     parser.add_argument('--phase', type=str, default='test', help='which part of the dataset to use: train, test, or validation', choices=['train', 'validation', 'test'])
     parser.add_argument('--spatial_coherence_weight', type=float, default=None, help='spatial_coherence_weight for GC_RANSAC')
     parser.add_argument('--use_sprt', type=str2bool, default=True, help='use_sprt for GC_RANSAC')
-    parser.add_argument('--prosac', type=str2bool, default=False, help='use_sprt for GC_RANSAC')
+    parser.add_argument('--prosac', type=str2bool, default=False, help='use prosac for GC_RANSAC')
     parser.add_argument('--BFR_factor', type=float, default=1.0, help='factor for BFR')
-    parser.add_argument('--BFR_strict', type=str2bool, default=True, help='strict parameter for BFR')
+    parser.add_argument('--BFR_strict', type=str2bool, default=False, help='strict parameter for BFR')
     parser.add_argument('--BFR_grid_wid', type=int, default=10, help='grid_wid for BFR')
     parser.add_argument('--BFR_ignore_bb', type=str2bool, default=False, help='emulate DFR with BFR')
+    parser.add_argument('--GC_conf', type=float, default=0.999, help='confidence for GC_RANSAC')
+    
     args = parser.parse_args()
 
     args.start_time    = start_time      

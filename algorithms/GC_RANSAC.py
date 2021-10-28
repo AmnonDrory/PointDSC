@@ -1,5 +1,8 @@
 from time import time
-import pygcransac
+try:
+    import pygcransac
+except Exception as E:
+    print("Ignoring exception: " + str(E))
 import numpy as np
 
 def GC_RANSAC(A,B, distance_threshold, num_iterations, args, match_quality):
@@ -32,6 +35,11 @@ def GC_RANSAC(A,B, distance_threshold, num_iterations, args, match_quality):
         params['sampler'] = args.prosac
     except Exception as E:
         print("Ignoring exception: " + str(E))
+
+    try:
+        params['conf'] = args.GC_conf
+    except Exception as E:
+        print("Ignoring exception: " + str(E))        
 
     if args.prosac:
         # sort from best quality to worst
