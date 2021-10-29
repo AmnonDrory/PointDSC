@@ -78,8 +78,32 @@ def A_to_B():
         [0,0,66.01,0.137,74.54,0.197],
         [0,0,64.16,0.126,73.88,0.188]])
     ref_data = ref_data[:,[0,1,3,2,5,4]]
+    name = 'A_to_B'
 
-    generic('A_to_B', ref_data, ref_names)
+    data, hulls = prep_data(name)
+
+    colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
+
+    plt.figure()
+    draw_all_hulls(hulls)
+    draw_line(data, colors[0][-2], 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
+    draw_line(data, colors[1][-2], 'BFR', 3, 'GC', 1, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
+    draw_line(data, 'red', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC','iters'])
+    draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'])
+
+    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 1, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC','iters', 'prosac'])
+    draw_line(data, 'deeppink', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 0, 'conf', 0.999, 'coherence', 0.975, label_fields=['BFR','GC','iters', 'coherence'])
+    
+    
+    draw_references(ref_data, ref_names)
+
+    for i in range(2):
+        ax = plt.subplot(1,2,i+1)
+        ax.legend()
+        plt.axis([0,None,None,None])
+   
+    plt.suptitle(name)
+
 
 def prep_data(name):
     data = parse_summary(f'logs/summary_{name}.txt')
@@ -211,7 +235,10 @@ def process_variance(cur_data):
 def draw_all_hulls(hulls, color='k'):
 
     for hull in hulls:
-        for j in range(2):
+        args = hull[-1]
+        if args[args.index('BFR')+1] == 4:
+            continue
+        for j in range(2):            
             ax = plt.subplot(1,2,j+1)
             points, h = hull[j]
             for simplex in h.simplices:
@@ -236,69 +263,8 @@ def draw_line(data, color, *args , label_fields=None, print_data=False):
                 c=color,
                 label=lbl
         )
-
-def generic(name, ref_data, ref_names):    
-
-    data = parse_summary(f'logs/summary_{name}.txt')
-    if name == 'B_to_B':
-        more_data = parse_summary('logs/oct28.txt')
-        data = np.vstack([data,more_data])
-    data, hulls = process_variance(data)
-    ord = np.argsort(data[:,d['iters']],axis=0,kind='stable')
-    data = data[ord,:]
-    ord = np.argsort(data[:,d['conf']],axis=0,kind='stable')
-    data = data[ord,:]
-
-    colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
-    symbols = ['v','s','p','P','*']
-    plt.figure()
-    draw_all_hulls(hulls)
-    BFR_vals = np.unique(data[:,d['BFR']])
-    for GC in [0,1]:
-        for i, BFR in enumerate(BFR_vals):    
-            draw_line(data, colors[GC][i], 'BFR', BFR, 'GC', GC, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC']) # AD TODO: add 'coherence', 0
-    for j in range(2):
-        ax = plt.subplot(1,2,j+1)
-        plt.title(flds[j])
-        plt.xlabel('sec')        
-        for ref_i in range(len(ref_names)):
-            if ref_names[ref_i] == 'DGR':
-                continue
-            plt.plot(ref_data[ref_i][d[flds[j][0]]], ref_data[ref_i][d[flds[j][1]]], symbols[ref_i], label=ref_names[ref_i])
-
-
-    ax = plt.subplot(1,2,1)
-    a = ax.axis()
-    teaser_t = ref_data[ref_names.index('TEASER++'),d['t_base']]
-    dsc_t = ref_data[ref_names.index('PointDSC'),d['t_base']]
-    m = min(teaser_t, dsc_t)
-    print(m)
-    ax.plot([m,m], a[2:],'k--')
-
-    ax = plt.subplot(1,2,2)
-    a = ax.axis()
-    teaser_t = ref_data[ref_names.index('TEASER++'),d['t_icp']]
-    dsc_t = ref_data[ref_names.index('PointDSC'),d['t_icp']]
-    m = min(teaser_t, dsc_t)
-    ax.plot([m,m], a[2:],'k--')
-
-    if name == 'B_to_B':
-        draw_line(data, 'deeppink', 'BFR', 3, 'GC', 1,  'iters', 10**6, 'prosac', 0, label_fields=['BFR','GC','iters'])
-        draw_line(data, 'greenyellow', 'BFR', -1, 'GC', 1, 'conf', 0.99, 'prosac', 0, label_fields=['BFR','GC','conf'])
-        draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 0, label_fields=['BFR','GC','iters'])
-        draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 1, label_fields=['BFR','GC','iters','prosac'])
-
-
-    for i in range(2):
-        ax = plt.subplot(1,2,i+1)
-        ax.legend()
-        plt.axis([0,None,None,None])
-   
-    plt.suptitle(name)
-
-
         
-#A_to_B()            
+A_to_B()            
 B_to_B()
 plt.show()
 
