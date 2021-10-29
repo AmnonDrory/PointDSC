@@ -1,5 +1,6 @@
 from sys import platform
 import numpy as np
+np.set_printoptions(precision=4,suppress=True)
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
@@ -80,6 +81,33 @@ def A_to_B():
 
     generic('A_to_B', ref_data, ref_names)
 
+def prep_data(name):
+    data = parse_summary(f'logs/summary_{name}.txt')
+    if name == 'B_to_B':
+        more_data = parse_summary('logs/oct28.txt')
+        data = np.vstack([data,more_data])
+    data, hulls = process_variance(data)
+    ord = np.argsort(data[:,d['iters']],axis=0,kind='stable')
+    data = data[ord,:]
+    ord = np.argsort(data[:,d['conf']],axis=0,kind='stable')
+    data = data[ord,:]
+    return data, hulls
+
+def draw_references(ref_data, ref_names):
+    symbols = ['v','s','p','P','*']
+    for j in range(2):
+        ax = plt.subplot(1,2,j+1)
+        plt.title(flds[j])
+        plt.xlabel('sec')        
+        for ref_i in range(len(ref_names)):
+            if ref_names[ref_i] == 'DGR':
+                continue
+            plt.plot(ref_data[ref_i][d[flds[j][0]]], ref_data[ref_i][d[flds[j][1]]], symbols[ref_i], label=ref_names[ref_i])
+        a = ax.axis()
+        teaser_t = ref_data[ref_names.index('TEASER++'),d[flds[j][0]]]
+        dsc_t = ref_data[ref_names.index('PointDSC'),d[flds[j][0]]]
+        m = min(teaser_t, dsc_t)
+        ax.plot([m,m], a[2:],'k--')
 
 def B_to_B():
     ref_names = ['DGR', 'PointDSC', 'TEASER++', 'MFR+RANSAC', 'DFR+RANSAC']
@@ -91,7 +119,30 @@ def B_to_B():
         [0,0,82.14,0.109,88.70,0.165]])
     ref_data = ref_data[:,[0,1,3,2,5,4]]
 
-    generic('B_to_B', ref_data, ref_names)
+    name = 'B_to_B'
+    data, hulls = prep_data(name)
+
+    colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
+
+    plt.figure()
+    draw_all_hulls(hulls)
+    draw_line(data, colors[0][0], 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
+    draw_line(data, colors[0][3], 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC', 'iters'])
+
+    draw_line(data, colors[1][1], 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC', 'iters'])
+    draw_references(ref_data, ref_names)
+
+    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])
+    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 1, label_fields=['BFR','GC','iters','prosac'])
+    draw_line(data, 'deeppink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 0, 'coherence', 0.975, label_fields=['BFR','GC','iters','coherence'])
+    draw_line(data, 'yellow', 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 0, 'coherence', 0.975, label_fields=['BFR','GC','iters','coherence'])
+
+    for i in range(2):
+        ax = plt.subplot(1,2,i+1)
+        ax.legend()
+        plt.axis([0,None,None,None])
+   
+    plt.suptitle(name)
 
 def get_subset(data, *args , label_fields=None):
     is_cur = np.ones(data.shape[0], dtype=bool)
@@ -167,13 +218,16 @@ def draw_all_hulls(hulls, color='k'):
                 ax.plot(points[simplex, 0], points[simplex, 1], '-', c=color)
             ax.scatter(points[:,0],points[:,1],color=color,marker='*')
 
-def draw_line(data, color, *args , label_fields=None):
+def draw_line(data, color, *args , label_fields=None, print_data=False):
     if 'coherence' not in args:
         args += ('coherence', 0)
 
     is_cur, lbl = get_subset(data, *args , label_fields=label_fields)
 
     cur_data = data[is_cur,:]
+    if print_data:
+        print(keys)
+        print(cur_data)
     for j in range(2):
         ax = plt.subplot(1,2,j+1)
         ax.plot(cur_data[:,d[flds[j][0]]],
@@ -244,7 +298,7 @@ def generic(name, ref_data, ref_names):
 
 
         
-A_to_B()            
+#A_to_B()            
 B_to_B()
 plt.show()
 
