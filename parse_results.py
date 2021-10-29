@@ -2,19 +2,17 @@ from sys import platform
 import numpy as np
 import matplotlib.pyplot as plt
 
-def parse_summary(d, filename, is_GC):
+d = { k:i for i,k in enumerate(['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC', 'prosac', 'conf'])}
+flds  = [['t_base', 'acc_base'], ['t_icp', 'acc_icp']]
+
+def parse_summary(filename):
     try:
         with open(filename, 'r') as fid:
             text = fid.read().splitlines()
     except:
         return np.empty([1,len(d.keys())])
 
-    if is_GC:
-        alg_name = 'GC'
-        offs = 2
-    else:
-        alg_name = 'RANSAC'
-        offs=0
+    alg_name = 'dummy'
 
     data_list = []
     for line in text:    
@@ -23,11 +21,26 @@ def parse_summary(d, filename, is_GC):
             L = line.replace('.txt','')
             a = L.split()
             b = a[1].split('_')
+            cur_row[d['GC']] = (b[1] == 'GC')
+            if (b[1] == 'GC'):
+                alg_name = 'GC'
+                offs = 2
+            else:
+                alg_name = 'RANSAC'
+                offs=0            
             cur_row[d['iters']] = float(b[2+offs].replace('K','000').replace('M','000000'))
-            if b[-2] == 'BFR':
-                cur_row[d['BFR']] = float(b[-1])
+            if 'BFR' in b:
+                cur_row[d['BFR']] = float(b[b.index('BFR')+1])
             else:
                 cur_row[d['BFR']] = -1
+            if 'conf' in b:
+                cur_row[d['conf']] = float(b[b.index('conf')+1])
+            else:
+                cur_row[d['conf']] = 0.999 # default
+            if 'prosac' in b:
+                cur_row[d['prosac']] = 1
+            else:
+                cur_row[d['prosac']] = 0
 
         if line.startswith(alg_name + "+ICP"): 
             a = line.split(',')            
@@ -41,7 +54,6 @@ def parse_summary(d, filename, is_GC):
             cur_row[d['acc_base']] = float(a[0].split()[-1][:-1])        
 
     data = np.vstack(data_list)
-    data[:,d['GC']] = is_GC
     return data
 
 def A_to_B():
@@ -68,16 +80,99 @@ def B_to_B():
 
     generic('B_to_B', ref_data, ref_names)
 
+def draw_line(data, color, *args , label_fields=None):
 
-def generic(name, ref_data, ref_names):
-    d = { k:i for i,k in enumerate(['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC'])}
+    is_cur = np.ones(data.shape[0], dtype=bool)
+    lbl = ''
+    for i in range(0,len(args),2):
+        prop = args[i]
+        val = float(args[i+1])
+        is_cur = is_cur & (data[:,d[prop]]==val)
+        if (label_fields is None) or (prop in  label_fields):
+            if prop=='iters':
+                if val % 10**6 == 0:
+                    lbl += f"{int(val / 10**6)}M "
+                elif val % 10**3 == 0:
+                    lbl += f"{int(val / 10**3)}K "
+                else:
+                    lbl += f"{prop}={val} "    
+            elif prop=='BFR':
+                lbl += (f"BFR({val}) " if val>0 else "MFR ")
+            elif prop == 'GC':
+                lbl += ("GC " if val else "RANSAC ")
+            else:
+                lbl += f"{prop}={val} "
 
-    data1 = parse_summary(d, f'logs/res_GC_{name}_BFR.txt', is_GC=True)
-    data2 = parse_summary(d, f'logs/res_GC_{name}_MFR.txt', is_GC=True)
-    data3 = parse_summary(d, f'logs/res_RANSAC_{name}_BFR.txt', is_GC=False)
-    data4 = parse_summary(d, f'logs/res_RANSAC_{name}_MFR.txt', is_GC=False)
+    cur_data = data[is_cur,:]
+    for j in range(2):
+        ax = plt.subplot(1,2,j+1)
+        ax.plot(cur_data[:,d[flds[j][0]]],
+                cur_data[:,d[flds[j][1]]], 
+                'o-', 
+                c=color,
+                label=lbl
+        )
 
-    data = np.vstack([data1,data2, data3, data4])
+def generic(name, ref_data, ref_names):    
+
+    data = parse_summary(f'logs/summary_{name}.txt')
+    if name == 'B_to_B':
+        more_data = parse_summary('logs/oct28.txt')
+        data = np.vstack([data,more_data])
+
+    ord = np.argsort(data[:,d['iters']])
+    data = data[ord,:]
+    print(data)
+
+    colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
+    symbols = ['v','s','p','P','*']
+    plt.figure()
+    BFR_vals = np.unique(data[:,d['BFR']])
+    for GC in [0,1]:
+        for i, BFR in enumerate(BFR_vals):    
+            draw_line(data, colors[GC][i], 'BFR', BFR, 'GC', GC, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC']) # AD TODO: add 'coherence', 0
+    for j in range(2):
+        ax = plt.subplot(1,2,j+1)
+        plt.title(flds[j])
+        plt.xlabel('sec')        
+        for ref_i in range(len(ref_names)):
+            if ref_names[ref_i] == 'DGR':
+                continue
+            plt.plot(ref_data[ref_i][d[flds[j][0]]], ref_data[ref_i][d[flds[j][1]]], symbols[ref_i], label=ref_names[ref_i])
+
+
+    ax = plt.subplot(1,2,1)
+    a = ax.axis()
+    teaser_t = ref_data[ref_names.index('TEASER++'),d['t_base']]
+    dsc_t = ref_data[ref_names.index('PointDSC'),d['t_base']]
+    m = min(teaser_t, dsc_t)
+    print(m)
+    ax.plot([m,m], a[2:],'k--')
+
+    ax = plt.subplot(1,2,2)
+    a = ax.axis()
+    teaser_t = ref_data[ref_names.index('TEASER++'),d['t_icp']]
+    dsc_t = ref_data[ref_names.index('PointDSC'),d['t_icp']]
+    m = min(teaser_t, dsc_t)
+    ax.plot([m,m], a[2:],'k--')
+
+    if name == 'B_to_B':
+        draw_line(data, 'deeppink', 'BFR', 3, 'GC', 1,  'iters', 10**6, 'prosac', 0, label_fields=['BFR','GC','iters'])
+        draw_line(data, 'greenyellow', 'BFR', -1, 'GC', 1, 'conf', 0.99, 'prosac', 0, label_fields=['BFR','GC','conf'])
+        draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 0, label_fields=['BFR','GC','iters'])
+        draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 1, label_fields=['BFR','GC','iters','prosac'])
+
+    for i in range(2):
+        ax = plt.subplot(1,2,i+1)
+        ax.legend()
+        plt.axis([0,None,None,None])
+
+   
+    plt.suptitle(name)
+
+def generic_old(name, ref_data, ref_names):    
+
+    data = parse_summary(f'logs/summary_{name}.txt')
 
     ord = np.argsort(data[:,d['iters']])
     data = data[ord,:]
@@ -109,9 +204,6 @@ def generic(name, ref_data, ref_names):
             plt.plot(ref_data[ref_i][d[flds[j][0]]], ref_data[ref_i][d[flds[j][1]]], symbols[ref_i], label=ref_names[ref_i])
 
 
-
-
-
     ax = plt.subplot(1,2,1)
     a = ax.axis()
     teaser_t = ref_data[ref_names.index('TEASER++'),d['t_base']]
@@ -127,10 +219,38 @@ def generic(name, ref_data, ref_names):
     m = min(teaser_t, dsc_t)
     ax.plot([m,m], a[2:],'k--')
 
+    if name == 'B_to_B':
+        more_data = parse_summary('logs/oct28.txt')
+        data = np.vstack([data,more_data])
+        ord = np.argsort(data[:,d['iters']])
+        data = data[ord,:]
+
+        def show(mask, lbl, color):
+            cur_data = data[mask,:]
+            for j in range(2):
+                ax = plt.subplot(1,2,j+1)
+                ax.plot(cur_data[:,d[flds[j][0]]],
+                        cur_data[:,d[flds[j][1]]], 
+                        'o-', 
+                        c=color,
+                        label=lbl
+                )
+
+        is_cur = (data[:,d['GC']]==1) & (data[:,d['BFR']]==3) & (data[:,d['iters']]==10**6) & (data[:,d['prosac']]==0)
+        show(is_cur, 'BFR(3.0)+GC 1M (conf)', 'deeppink')
+        is_cur = (data[:,d['GC']]==1) & (data[:,d['BFR']]==-1) & (data[:,d['conf']]==0.99) & (data[:,d['prosac']]==0)
+        show(is_cur, 'MFR+GC conf=0.99', 'greenyellow')
+        is_cur = (data[:,d['GC']]==1) & (data[:,d['BFR']]==-1) & (data[:,d['iters']]==1000000) & (data[:,d['prosac']]==0)
+        show(is_cur, 'MFR+GC 1M (conf)', 'darkorange')
+        is_cur = (data[:,d['GC']]==1) & (data[:,d['BFR']]==-1) & (data[:,d['iters']]==1000000) & (data[:,d['prosac']]==1)
+        show(is_cur, 'MFR+GC 1M prosac', 'black')
+
+
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
         ax.legend()
         plt.axis([0,None,None,None])
+
     
     plt.suptitle(name)
 
@@ -138,3 +258,5 @@ def generic(name, ref_data, ref_names):
 A_to_B()            
 B_to_B()
 plt.show()
+
+
