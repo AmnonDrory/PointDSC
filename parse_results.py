@@ -1,8 +1,13 @@
 from sys import platform
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+from scipy.spatial import ConvexHull, convex_hull_plot_2d
+from copy import deepcopy
 
-d = { k:i for i,k in enumerate(['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC', 'prosac', 'conf'])}
+keys = ['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC', 'prosac', 'conf', 'take', 'coherence']
+
+d = { k:i for i,k in enumerate(keys)}
 flds  = [['t_base', 'acc_base'], ['t_icp', 'acc_icp']]
 
 def parse_summary(filename):
@@ -17,7 +22,7 @@ def parse_summary(filename):
     data_list = []
     for line in text:    
         if line.startswith('==>'):
-            cur_row = np.zeros(len(d.keys()))
+            cur_row = np.zeros(len(keys))
             L = line.replace('.txt','')
             a = L.split()
             b = a[1].split('_')
@@ -41,6 +46,14 @@ def parse_summary(filename):
                 cur_row[d['prosac']] = 1
             else:
                 cur_row[d['prosac']] = 0
+            if 'coherence' in b:
+                cur_row[d['coherence']] = float(b[b.index('coherence')+1])
+            else:
+                cur_row[d['coherence']] = 0
+            if 'take' in b:
+                cur_row[d['take']] = float(b[b.index('take')+1])
+            else:
+                cur_row[d['take']] = 1
 
         if line.startswith(alg_name + "+ICP"): 
             a = line.split(',')            
@@ -80,8 +93,7 @@ def B_to_B():
 
     generic('B_to_B', ref_data, ref_names)
 
-def draw_line(data, color, *args , label_fields=None):
-
+def get_subset(data, *args , label_fields=None):
     is_cur = np.ones(data.shape[0], dtype=bool)
     lbl = ''
     for i in range(0,len(args),2):
@@ -103,6 +115,64 @@ def draw_line(data, color, *args , label_fields=None):
             else:
                 lbl += f"{prop}={val} "
 
+    return is_cur, lbl
+
+def process_variance(cur_data):
+    major_keys = list(set(keys) - set(['t_base', 'acc_base', 't_icp', 'acc_icp', 'take']))
+
+    mean_data_list = []    
+    hulls = []
+    remainder = cur_data
+    
+    is_multi_take = remainder[:,d['take']]>1    
+    while is_multi_take.sum() > 0:
+
+        i = np.where(is_multi_take)[0][0]
+
+        args = []
+        for k in major_keys:
+            args.append(k)
+            args.append(remainder[i,d[k]])
+
+        mask, _ = get_subset(remainder, *args)
+
+        cur_d = remainder[mask,:]
+        cur_mean = np.mean(cur_d,axis=0,keepdims=True)
+        for k in major_keys:
+            cur_mean[0,d[k]] = remainder[i,d[k]]
+        mean_data_list.append(cur_mean)
+    
+        cur_hull = []
+        for j in range(2):
+            points = np.vstack([cur_d[:,d[flds[j][0]]], cur_d[:,d[flds[j][1]]]]).T
+            h = ConvexHull(points)
+            cur_hull.append([deepcopy(points), deepcopy(h)])
+        cur_hull.append(deepcopy(args))
+        hulls.append(cur_hull)
+
+        remainder = remainder[~mask,:]
+        is_multi_take = remainder[:,d['take']]>1
+
+    mean_data_list.append(remainder)
+    final_data = np.vstack(mean_data_list)
+    return final_data, hulls
+
+def draw_all_hulls(hulls, color='k'):
+
+    for hull in hulls:
+        for j in range(2):
+            ax = plt.subplot(1,2,j+1)
+            points, h = hull[j]
+            for simplex in h.simplices:
+                ax.plot(points[simplex, 0], points[simplex, 1], '-', c=color)
+            ax.scatter(points[:,0],points[:,1],color=color,marker='*')
+
+def draw_line(data, color, *args , label_fields=None):
+    if 'coherence' not in args:
+        args += ('coherence', 0)
+
+    is_cur, lbl = get_subset(data, *args , label_fields=label_fields)
+
     cur_data = data[is_cur,:]
     for j in range(2):
         ax = plt.subplot(1,2,j+1)
@@ -119,14 +189,16 @@ def generic(name, ref_data, ref_names):
     if name == 'B_to_B':
         more_data = parse_summary('logs/oct28.txt')
         data = np.vstack([data,more_data])
-
-    ord = np.argsort(data[:,d['iters']])
+    data, hulls = process_variance(data)
+    ord = np.argsort(data[:,d['iters']],axis=0,kind='stable')
     data = data[ord,:]
-    print(data)
+    ord = np.argsort(data[:,d['conf']],axis=0,kind='stable')
+    data = data[ord,:]
 
     colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
     symbols = ['v','s','p','P','*']
     plt.figure()
+    draw_all_hulls(hulls)
     BFR_vals = np.unique(data[:,d['BFR']])
     for GC in [0,1]:
         for i, BFR in enumerate(BFR_vals):    
@@ -162,101 +234,21 @@ def generic(name, ref_data, ref_names):
         draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 0, label_fields=['BFR','GC','iters'])
         draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 1, label_fields=['BFR','GC','iters','prosac'])
 
+
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
         ax.legend()
         plt.axis([0,None,None,None])
-
    
     plt.suptitle(name)
 
-def generic_old(name, ref_data, ref_names):    
-
-    data = parse_summary(f'logs/summary_{name}.txt')
-
-    ord = np.argsort(data[:,d['iters']])
-    data = data[ord,:]
-    print(data)
-
-    colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
-    symbols = ['v','s','p','P','*']
-    plt.figure()
-    ax = plt.gca()
-    flds  = [['t_base', 'acc_base'], ['t_icp', 'acc_icp']]
-    BFR_vals = np.unique(data[:,d['BFR']])
-    for j in range(2):
-        ax = plt.subplot(1,2,j+1)
-        for GC in [0,1]:
-            for i, BFR in enumerate(BFR_vals):
-                is_cur = (data[:,d['BFR']] == BFR) & (data[:,d['GC']] == GC)
-                cur_data = data[is_cur,:]    
-                lbl = (f"BFR({BFR})" if BFR>0 else "MFR") + ("+GC" if GC else "+RANSAC")
-                ax.plot(cur_data[:,d[flds[j][0]]],
-                        cur_data[:,d[flds[j][1]]], 
-                        'o-', 
-                        c=colors[GC][i],
-                        label=lbl)
-                plt.title(flds[j])
-                plt.xlabel('sec')        
-        for ref_i in range(len(ref_names)):
-            if ref_names[ref_i] == 'DGR':
-                continue
-            plt.plot(ref_data[ref_i][d[flds[j][0]]], ref_data[ref_i][d[flds[j][1]]], symbols[ref_i], label=ref_names[ref_i])
-
-
-    ax = plt.subplot(1,2,1)
-    a = ax.axis()
-    teaser_t = ref_data[ref_names.index('TEASER++'),d['t_base']]
-    dsc_t = ref_data[ref_names.index('PointDSC'),d['t_base']]
-    m = min(teaser_t, dsc_t)
-    print(m)
-    ax.plot([m,m], a[2:],'k--')
-
-    ax = plt.subplot(1,2,2)
-    a = ax.axis()
-    teaser_t = ref_data[ref_names.index('TEASER++'),d['t_icp']]
-    dsc_t = ref_data[ref_names.index('PointDSC'),d['t_icp']]
-    m = min(teaser_t, dsc_t)
-    ax.plot([m,m], a[2:],'k--')
-
-    if name == 'B_to_B':
-        more_data = parse_summary('logs/oct28.txt')
-        data = np.vstack([data,more_data])
-        ord = np.argsort(data[:,d['iters']])
-        data = data[ord,:]
-
-        def show(mask, lbl, color):
-            cur_data = data[mask,:]
-            for j in range(2):
-                ax = plt.subplot(1,2,j+1)
-                ax.plot(cur_data[:,d[flds[j][0]]],
-                        cur_data[:,d[flds[j][1]]], 
-                        'o-', 
-                        c=color,
-                        label=lbl
-                )
-
-        is_cur = (data[:,d['GC']]==1) & (data[:,d['BFR']]==3) & (data[:,d['iters']]==10**6) & (data[:,d['prosac']]==0)
-        show(is_cur, 'BFR(3.0)+GC 1M (conf)', 'deeppink')
-        is_cur = (data[:,d['GC']]==1) & (data[:,d['BFR']]==-1) & (data[:,d['conf']]==0.99) & (data[:,d['prosac']]==0)
-        show(is_cur, 'MFR+GC conf=0.99', 'greenyellow')
-        is_cur = (data[:,d['GC']]==1) & (data[:,d['BFR']]==-1) & (data[:,d['iters']]==1000000) & (data[:,d['prosac']]==0)
-        show(is_cur, 'MFR+GC 1M (conf)', 'darkorange')
-        is_cur = (data[:,d['GC']]==1) & (data[:,d['BFR']]==-1) & (data[:,d['iters']]==1000000) & (data[:,d['prosac']]==1)
-        show(is_cur, 'MFR+GC 1M prosac', 'black')
-
-
-    for i in range(2):
-        ax = plt.subplot(1,2,i+1)
-        ax.legend()
-        plt.axis([0,None,None,None])
-
-    
-    plt.suptitle(name)
 
         
 A_to_B()            
 B_to_B()
 plt.show()
+
+
+
 
 
