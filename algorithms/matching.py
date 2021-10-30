@@ -2,6 +2,37 @@ import numpy as np
 import torch
 from copy import deepcopy
 
+def find_2nd(F0, F1):
+    nn_max_n = 250
+
+    def knn_dist(f0, f1):
+        # Fast implementation with torch.einsum()
+        with torch.no_grad():      
+            # L2 distance:
+            dist2 = torch.sum(f0**2, dim=1).reshape([-1,1]) + torch.sum(f1**2, dim=1).reshape([1,-1]) -2*torch.einsum('ac,bc->ab', f0, f1)
+            dist = dist2.clamp_min(1e-30).sqrt_()
+            # Cosine distance:
+            #   dist = 1-torch.einsum('ac,bc->ab', f0, f1)                  
+            ord = torch.argsort(dist, dim=1)
+            ind = ord[:,1].unsqueeze(1)
+        return ind
+    
+    N = len(F0)
+    C = int(np.ceil(N / nn_max_n))
+    stride = nn_max_n
+    inds = []
+    for i in range(C):
+        with torch.no_grad():
+            ind = knn_dist(F0[i * stride:(i + 1) * stride], F1)
+            inds.append(ind)
+    
+    inds = torch.cat(inds)
+    assert len(inds) == N
+
+    corres_idx0 = torch.arange(len(inds)).long().squeeze()
+    corres_idx1 = inds.long().squeeze().cpu()
+    return corres_idx0, corres_idx1
+
 def find_nn(F0, F1):
     nn_max_n = 250
 

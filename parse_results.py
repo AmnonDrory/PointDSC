@@ -85,16 +85,11 @@ def A_to_B():
     colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
 
     plt.figure()
-    draw_all_hulls(hulls)
+    #draw_all_hulls(hulls)
     draw_line(data, colors[0][-2], 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
     draw_line(data, colors[1][-2], 'BFR', 3, 'GC', 1, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
     draw_line(data, 'red', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC','iters'])
     draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'])
-
-    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 1, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC','iters', 'prosac'])
-    draw_line(data, 'deeppink', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 0, 'conf', 0.999, 'coherence', 0.975, label_fields=['BFR','GC','iters', 'coherence'])
-    
-    
     draw_references(ref_data, ref_names)
 
     for i in range(2):
@@ -124,7 +119,7 @@ def draw_references(ref_data, ref_names):
         plt.title(flds[j])
         plt.xlabel('sec')        
         for ref_i in range(len(ref_names)):
-            if ref_names[ref_i] == 'DGR':
+            if ref_names[ref_i] in ['DGR', 'DFR+RANSAC', 'MFR+RANSAC']:
                 continue
             plt.plot(ref_data[ref_i][d[flds[j][0]]], ref_data[ref_i][d[flds[j][1]]], symbols[ref_i], label=ref_names[ref_i])
         a = ax.axis()
@@ -149,17 +144,14 @@ def B_to_B():
     colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
 
     plt.figure()
-    draw_all_hulls(hulls)
+    #draw_all_hulls(hulls)
     draw_line(data, colors[0][0], 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
     draw_line(data, colors[0][3], 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC', 'iters'])
 
     draw_line(data, colors[1][1], 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC', 'iters'])
     draw_references(ref_data, ref_names)
 
-    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])
-    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 1, label_fields=['BFR','GC','iters','prosac'])
-    draw_line(data, 'deeppink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'prosac', 0, 'coherence', 0.975, label_fields=['BFR','GC','iters','coherence'])
-    draw_line(data, 'yellow', 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 0, 'coherence', 0.975, label_fields=['BFR','GC','iters','coherence'])
+    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
