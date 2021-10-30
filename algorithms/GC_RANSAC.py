@@ -9,7 +9,7 @@ def GC_RANSAC(A,B, distance_threshold, num_iterations, args, match_quality):
     
     x1y1z1_= np.ascontiguousarray(A)
     x2y2z2_= np.ascontiguousarray(B)
-    params = {
+    params = { # AD TODO: most of these are overwritten by command line arguments. organize. 
     'threshold': distance_threshold, # default: 1.0
     'conf': 0.999, # default: 0.99
     'spatial_coherence_weight': 0.0, # default: 0.975
@@ -21,25 +21,13 @@ def GC_RANSAC(A,B, distance_threshold, num_iterations, args, match_quality):
     'neighborhood_size': 20, # default: 20
     }
 
-    try:
-        params['spatial_coherence_weight'] = args.spatial_coherence_weight
-    except Exception as E:
-        print("Ignoring exception: " + str(E))
-
-    try:
-        params['use_sprt'] = args.use_sprt
-    except Exception as E:
-        print("Ignoring exception: " + str(E))
-
-    try:
-        params['sampler'] = args.prosac
-    except Exception as E:
-        print("Ignoring exception: " + str(E))
-
-    try:
-        params['conf'] = args.GC_conf
-    except Exception as E:
-        print("Ignoring exception: " + str(E))        
+    params['spatial_coherence_weight'] = args.spatial_coherence_weight
+    params['use_sprt'] = args.use_sprt
+    params['sampler'] = args.prosac
+    params['conf'] = args.GC_conf
+    if args.use_edge_len:
+        params['use_sprt'] = True
+        params['min_inlier_ratio_for_sprt'] = -1 # negative value signals that c++ code should use edge-len pre-emption
 
     if args.prosac:
         # sort from best quality to worst

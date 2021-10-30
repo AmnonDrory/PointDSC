@@ -94,6 +94,7 @@ def A_to_B():
     draw_line(data, colors[1][-2], 'BFR', 3, 'GC', 1, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
     draw_line(data, 'red', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC','iters'])
     draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 0, 'conf', 0.9995, 'coherence', 0, label_fields=['BFR','GC','iters','conf'])
+    draw_line(data, 'brown', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 0, 'conf', 0.9999, 'coherence', 0, label_fields=['BFR','GC','iters','conf'])
     draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'])
     draw_references(ref_data, ref_names)
 
@@ -158,7 +159,8 @@ def B_to_B():
     draw_references(ref_data, ref_names)
 
     draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
-    draw_line(data, 'chocolate', 'BFR', -1, 'GC', 1, 'iters', 5*10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
+    draw_line(data, 'yellow', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9999, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
+    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, label_fields=['BFR','GC','iters','conf', 'distratio', 'prosac'])    
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
