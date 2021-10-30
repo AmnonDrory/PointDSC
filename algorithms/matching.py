@@ -68,7 +68,7 @@ def torch_intersect(Na, Nb, i_ab,j_ab,i_ba,j_ba):
 
     return i_final, j_final
 
-def nn_to_mutual(feats0, feats1, corres_idx0, corres_idx1):
+def nn_to_mutual(feats0, feats1, corres_idx0, corres_idx1, idx1_2nd=None, force_return_2nd=False):
     
     uniq_inds_1=torch.unique(corres_idx1)
     inv_corres_idx1, inv_corres_idx0, _ = find_nn(feats1[uniq_inds_1,:], feats0, False)
@@ -79,7 +79,13 @@ def nn_to_mutual(feats0, feats1, corres_idx0, corres_idx1):
     corres_idx0, corres_idx1,
     inv_corres_idx0, inv_corres_idx1)
 
-    return final_corres_idx0, final_corres_idx1
+    if idx1_2nd is not None:
+        idx1_2nd = idx1_2nd[final_corres_idx0] # this relies on the fact that corres_idx0 is the full sorted range [0,...,n]
+        return final_corres_idx0, final_corres_idx1, idx1_2nd
+    elif force_return_2nd:
+        return final_corres_idx0, final_corres_idx1, None
+    else:
+        final_corres_idx0, final_corres_idx1
 
 def measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size):
     corres_idx0_ = corres_idx0.detach().numpy()

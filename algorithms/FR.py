@@ -163,55 +163,15 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2n
 
     corres_idx0_orig = deepcopy(corres_idx0)
     corres_idx1_orig = deepcopy(corres_idx1)
+    idx1_2nd_orig = deepcopy(idx1_2nd)
     corres_idx0 = corres_idx0[keep]
     corres_idx1 = corres_idx1[keep]
+    if idx1_2nd is not None:
+        idx1_2nd = idx1_2nd[keep]
+    else:
+        idx1_2nd = None
 
-    return corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig    
-
-def filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args):
-    
-    feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, args)
-
-    GRID_WID = 10
-    TOTAL_NUM = 10000 # in practice, about half is selected. 
-    NUM_PER_QUAD = int(np.ceil(TOTAL_NUM/GRID_WID**2))
-    def to_quads(X, GRID_WID):
-        EPS = 10**-3
-        m = torch.min(X)
-        M = torch.max(X)
-        X_ = (X - m) / (M-m+EPS)
-        res = torch.floor(GRID_WID*X_)
-        return res
-
-    quadrant_i = to_quads(xyz0[:,0], GRID_WID)
-    quadrant_j = to_quads(xyz0[:,1], GRID_WID)
-    keep = np.zeros(len(feat_dist), dtype=bool)
-    num_remaining_quads = GRID_WID**2
-    num_remaining_samples = TOTAL_NUM          
-    for qi in range(GRID_WID):
-        for qj in range(GRID_WID):
-            samples_per_quad = int(np.ceil(num_remaining_samples / num_remaining_quads))
-            is_quad_mask = (quadrant_i == qi) & (quadrant_j == qj)  
-            is_quad_inds = is_quad_mask.nonzero(as_tuple=True)[0]
-            if len(is_quad_inds) > samples_per_quad:
-                ord = torch.argsort(feat_dist[is_quad_mask])
-                is_quad_inds = is_quad_inds[ord[:samples_per_quad]]
-            keep[is_quad_inds] = True
-            num_remaining_samples -= len(is_quad_inds)
-            num_remaining_quads -= 1
-
-    if not(args.spatial):
-        num_to_keep = keep.sum()
-        ord = torch.argsort(feat_dist.cpu())
-        keep = np.zeros(len(feat_dist), dtype=bool)
-        keep[ord[:num_to_keep]] = True
-
-    corres_idx0_orig = deepcopy(corres_idx0)
-    corres_idx1_orig = deepcopy(corres_idx1)
-    corres_idx0 = corres_idx0[keep]
-    corres_idx1 = corres_idx1[keep]
-
-    return corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig
+    return corres_idx0, corres_idx1, idx1_2nd, corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig
 
 def FR(A,B, A_feat, B_feat, args, T_gt):    
 
@@ -243,15 +203,13 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         start_time = time()
 
         # 2. Filter correspondences:
-        if args.mode == "DFR":
-            corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_by_distance_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args)                        
-        elif args.mode == "MFR":
-            corres_idx0_orig, corres_idx1_orig = corres_idx0, corres_idx1
-            corres_idx0, corres_idx1 = nn_to_mutual(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
+        if args.mode == "MFR":
+            corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig = corres_idx0, corres_idx1, idx1_2nd
+            corres_idx0, corres_idx1, idx1_2nd = nn_to_mutual(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, force_return_2nd=True)
         elif args.mode == "BFR":
-            corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, xyz0, args)
+            corres_idx0, corres_idx1, idx1_2nd, corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig = filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, xyz0, args)
         elif args.mode == "no_filter":
-            corres_idx0_orig, corres_idx1_orig = corres_idx0, corres_idx1
+            corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig = corres_idx0, corres_idx1, idx1_2nd
         else:
             assert False, "when running with algo==RANSAC, must define mode to either DFR or MFR"
 
