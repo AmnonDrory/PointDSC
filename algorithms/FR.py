@@ -10,15 +10,12 @@ import torch
 import open3d as o3d
 from copy import deepcopy
 from time import time
-from algorithms.matching import find_nn, nn_to_mutual, measure_inlier_ratio, find_2nd
+from algorithms.matching import find_nn, nn_to_mutual, measure_inlier_ratio
 from algorithms.GC_RANSAC import GC_RANSAC
 
-def calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, args):
+def calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args):
     eps = 10**-6
     if args.use_dist_ratio:
-        idx0_2nd, idx1_2nd = find_2nd(fcgf_feats0, fcgf_feats1)
-        assert (idx0_2nd == corres_idx0).all()
-        
         A = fcgf_feats0[corres_idx0,:]
         B_1 = fcgf_feats1[corres_idx1,:]
         B_2 = fcgf_feats1[idx1_2nd,:]
@@ -49,7 +46,7 @@ def mark_best_buddies(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1):
     return is_bb, num_bb
 
 
-def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args):
+def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, xyz0, args):
     # cobination of DFR and MFR.
     # first step - take the mutual-nearest-neighbors as a core
     # second step - use a spatial grid to add more pairs, so that every cell has some representatives.
@@ -69,7 +66,7 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, a
         num_bb = 0
 
 
-    feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, args)
+    feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args)
     def normalize(tens):
         m = torch.min(tens)
         M = torch.max(tens)
@@ -239,7 +236,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
     with torch.no_grad():
 
         # 1. Coarse correspondences
-        corres_idx0, corres_idx1 = find_nn(fcgf_feats0, fcgf_feats1)
+        corres_idx0, corres_idx1, idx1_2nd = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=args.use_dist_ratio)
         num_pairs_init = len(corres_idx0)
         inlier_ratio_init = measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)
 
@@ -252,7 +249,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
             corres_idx0_orig, corres_idx1_orig = corres_idx0, corres_idx1
             corres_idx0, corres_idx1 = nn_to_mutual(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
         elif args.mode == "BFR":
-            corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, xyz0, args)
+            corres_idx0, corres_idx1, corres_idx0_orig, corres_idx1_orig = filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, xyz0, args)
         elif args.mode == "no_filter":
             corres_idx0_orig, corres_idx1_orig = corres_idx0, corres_idx1
         else:
@@ -275,7 +272,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         A = xyz0_np[corres_idx0,:].astype(np.float32)
         B = xyz1_np[corres_idx1,:].astype(np.float32)
         if args.prosac:
-            feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, args).detach().cpu().numpy()
+            feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args).detach().cpu().numpy()
             match_quality = -feat_dist
         else:
             match_quality = None

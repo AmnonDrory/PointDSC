@@ -106,7 +106,7 @@ def TEASER(A_pcd, B_pcd, A_feats, B_feats, args):
     A_feats = A_feats.to(device)
     B_feats = B_feats.to(device)
     
-    corrs_nn_A, corrs_nn_B = find_nn(A_feats, B_feats) # we dont measure time for this because this data is only recalculated here for convenience, it could have been received as input
+    corrs_nn_A, corrs_nn_B, _ = find_nn(A_feats, B_feats, False) # we dont measure time for this because this data is only recalculated here for convenience, it could have been received as input
     start_time = time.time()
     corrs_A_tensor, corrs_B_tensor = nn_to_mutual(A_feats, B_feats, corrs_nn_A, corrs_nn_B)
     correspondence_time = time.time() - start_time

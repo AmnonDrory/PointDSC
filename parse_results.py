@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
 from copy import deepcopy
 
-keys = ['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC', 'prosac', 'conf', 'take', 'coherence']
+keys = ['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC', 'prosac', 'conf', 'take', 'coherence', 'distratio']
 
 d = { k:i for i,k in enumerate(keys)}
 flds  = [['t_base', 'acc_base'], ['t_icp', 'acc_icp']]
@@ -55,6 +55,10 @@ def parse_summary(filename):
                 cur_row[d['take']] = float(b[b.index('take')+1])
             else:
                 cur_row[d['take']] = 1
+            if 'distratio' in b:
+                cur_row[d['distratio']] = float(b[b.index('distratio')+1])
+            else:
+                cur_row[d['distratio']] = 0
 
         if line.startswith(alg_name + "+ICP"): 
             a = line.split(',')            
@@ -85,10 +89,11 @@ def A_to_B():
     colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
 
     plt.figure()
-    #draw_all_hulls(hulls)
+    draw_all_hulls(hulls)
     draw_line(data, colors[0][-2], 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
     draw_line(data, colors[1][-2], 'BFR', 3, 'GC', 1, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
     draw_line(data, 'red', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC','iters'])
+    draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 800000, 'prosac', 0, 'conf', 0.9995, 'coherence', 0, label_fields=['BFR','GC','iters','conf'])
     draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'])
     draw_references(ref_data, ref_names)
 
@@ -144,14 +149,16 @@ def B_to_B():
     colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
 
     plt.figure()
-    #draw_all_hulls(hulls)
+    draw_all_hulls(hulls)
     draw_line(data, colors[0][0], 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
     draw_line(data, colors[0][3], 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC', 'iters'])
+    draw_line(data, 'silver', 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, 'distratio', 1, label_fields=['BFR','GC', 'iters','distratio'])
 
     draw_line(data, colors[1][1], 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC', 'iters'])
     draw_references(ref_data, ref_names)
 
     draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
+    draw_line(data, 'chocolate', 'BFR', -1, 'GC', 1, 'iters', 5*10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
@@ -240,6 +247,8 @@ def draw_all_hulls(hulls, color='k'):
 def draw_line(data, color, *args , label_fields=None, print_data=False):
     if 'coherence' not in args:
         args += ('coherence', 0)
+    if 'distratio' not in args:
+        args += ('distratio', 0)
 
     is_cur, lbl = get_subset(data, *args , label_fields=label_fields)
 

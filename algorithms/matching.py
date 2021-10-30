@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from copy import deepcopy
 
-def find_2nd(F0, F1):
+def find_nn(F0, F1, return_2nd=False):
     nn_max_n = 250
 
     def knn_dist(f0, f1):
@@ -13,55 +13,38 @@ def find_2nd(F0, F1):
             dist = dist2.clamp_min(1e-30).sqrt_()
             # Cosine distance:
             #   dist = 1-torch.einsum('ac,bc->ab', f0, f1)                  
-            ord = torch.argsort(dist, dim=1)
-            ind = ord[:,1].unsqueeze(1)
-        return ind
+            if return_2nd: 
+                _, inds = torch.topk(-dist, 2, dim=1)
+                ind = inds[:,0].unsqueeze(1)
+                ind_2nd = inds[:,1].unsqueeze(1)
+                return ind, ind_2nd
+            else:
+                _, ind = dist.min(dim=1, keepdim=True)                
+                return ind, None
     
     N = len(F0)
     C = int(np.ceil(N / nn_max_n))
     stride = nn_max_n
     inds = []
+    inds_2nd = []
     for i in range(C):
         with torch.no_grad():
-            ind = knn_dist(F0[i * stride:(i + 1) * stride], F1)
+            ind, ind_2nd = knn_dist(F0[i * stride:(i + 1) * stride], F1)
             inds.append(ind)
+            inds_2nd.append(ind_2nd)
     
     inds = torch.cat(inds)
+    if return_2nd:
+        inds_2nd = torch.cat(inds_2nd)
     assert len(inds) == N
 
     corres_idx0 = torch.arange(len(inds)).long().squeeze()
     corres_idx1 = inds.long().squeeze().cpu()
-    return corres_idx0, corres_idx1
-
-def find_nn(F0, F1):
-    nn_max_n = 250
-
-    def knn_dist(f0, f1):
-        # Fast implementation with torch.einsum()
-        with torch.no_grad():      
-            # L2 distance:
-            dist2 = torch.sum(f0**2, dim=1).reshape([-1,1]) + torch.sum(f1**2, dim=1).reshape([1,-1]) -2*torch.einsum('ac,bc->ab', f0, f1)
-            dist = dist2.clamp_min(1e-30).sqrt_()
-            # Cosine distance:
-            #   dist = 1-torch.einsum('ac,bc->ab', f0, f1)                  
-            min_dist, ind = dist.min(dim=1, keepdim=True)      
-        return ind
-    
-    N = len(F0)
-    C = int(np.ceil(N / nn_max_n))
-    stride = nn_max_n
-    inds = []
-    for i in range(C):
-        with torch.no_grad():
-            ind = knn_dist(F0[i * stride:(i + 1) * stride], F1)
-            inds.append(ind)
-    
-    inds = torch.cat(inds)
-    assert len(inds) == N
-
-    corres_idx0 = torch.arange(len(inds)).long().squeeze()
-    corres_idx1 = inds.long().squeeze().cpu()
-    return corres_idx0, corres_idx1
+    if return_2nd:
+        idx1_2nd = inds_2nd.long().squeeze().cpu()
+        return corres_idx0, corres_idx1, idx1_2nd
+    else:
+        return corres_idx0, corres_idx1, None
 
 def torch_intersect(Na, Nb, i_ab,j_ab,i_ba,j_ba):    
     def make_sparse_mat(i_,j_,sz):
@@ -88,7 +71,7 @@ def torch_intersect(Na, Nb, i_ab,j_ab,i_ba,j_ba):
 def nn_to_mutual(feats0, feats1, corres_idx0, corres_idx1):
     
     uniq_inds_1=torch.unique(corres_idx1)
-    inv_corres_idx1, inv_corres_idx0 = find_nn(feats1[uniq_inds_1,:], feats0)
+    inv_corres_idx1, inv_corres_idx0, _ = find_nn(feats1[uniq_inds_1,:], feats0, False)
     inv_corres_idx1 = uniq_inds_1
 
     final_corres_idx0, final_corres_idx1 = torch_intersect(
