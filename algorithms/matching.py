@@ -85,7 +85,7 @@ def nn_to_mutual(feats0, feats1, corres_idx0, corres_idx1, idx1_2nd=None, force_
     elif force_return_2nd:
         return final_corres_idx0, final_corres_idx1, None
     else:
-        final_corres_idx0, final_corres_idx1
+        return final_corres_idx0, final_corres_idx1
 
 def measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size):
     corres_idx0_ = corres_idx0.detach().numpy()
