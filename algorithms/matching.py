@@ -13,13 +13,14 @@ def find_nn(F0, F1, return_2nd=False):
             dist = dist2.clamp_min(1e-30).sqrt_()
             # Cosine distance:
             #   dist = 1-torch.einsum('ac,bc->ab', f0, f1)                  
+
+            _, ind = dist.min(dim=1, keepdim=True)                
             if return_2nd: 
-                _, inds = torch.topk(-dist, 2, dim=1)
-                ind = inds[:,0].unsqueeze(1)
-                ind_2nd = inds[:,1].unsqueeze(1)
+                dist[torch.arange(len(ind)), ind.squeeze()] = np.inf
+                _, ind_2nd = dist.min(dim=1, keepdim=True)
+                
                 return ind, ind_2nd
             else:
-                _, ind = dist.min(dim=1, keepdim=True)                
                 return ind, None
     
     N = len(F0)

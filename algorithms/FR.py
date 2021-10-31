@@ -196,7 +196,18 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
     with torch.no_grad():
 
         # 1. Coarse correspondences
-        corres_idx0, corres_idx1, idx1_2nd = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=args.use_dist_ratio)
+        if args.use_dist_ratio:
+            simple_corres_start_time = time()
+            _, _, _ = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=False)
+            simple_corres_time = time() - simple_corres_start_time
+            corres_start_time = time()
+            corres_idx0, corres_idx1, idx1_2nd = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=True)
+            corres_time = time() - corres_start_time
+            additional_time_for_finding_2nd_closest = corres_time - simple_corres_time
+        else:
+            corres_idx0, corres_idx1, idx1_2nd = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=False)
+            additional_time_for_finding_2nd_closest = 0
+
         num_pairs_init = len(corres_idx0)
         inlier_ratio_init = measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)
 
@@ -268,7 +279,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         T = p2p.compute_transformation(pcd0, pcd1, corres_)
 
     algo_time = time() - start_time
-    elapsed_time = filter_time + algo_time
+    elapsed_time = filter_time + algo_time + additional_time_for_finding_2nd_closest
 
     return T, elapsed_time, pcd0, pcd1, num_pairs_init, inlier_ratio_init, num_pairs_filtered, inlier_ratio_filtered
 
