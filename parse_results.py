@@ -3,10 +3,11 @@ import numpy as np
 np.set_printoptions(precision=4,suppress=True)
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.spatial import ConvexHull, convex_hull_plot_2d
+from scipy.spatial import qhull, ConvexHull
+
 from copy import deepcopy
 
-keys = ['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC', 'prosac', 'conf', 'take', 'coherence', 'distratio']
+keys = ['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC', 'prosac', 'conf', 'take', 'coherence', 'distratio', 'edgelen']
 
 d = { k:i for i,k in enumerate(keys)}
 flds  = [['t_base', 'acc_base'], ['t_icp', 'acc_icp']]
@@ -59,6 +60,11 @@ def parse_summary(filename):
                 cur_row[d['distratio']] = float(b[b.index('distratio')+1])
             else:
                 cur_row[d['distratio']] = 0
+            if 'edgelen' in b:
+                cur_row[d['edgelen']] = float(b[b.index('edgelen')+1])
+            else:
+                cur_row[d['edgelen']] = 0                
+
 
         if line.startswith(alg_name + "+ICP"): 
             a = line.split(',')            
@@ -107,9 +113,7 @@ def A_to_B():
 
 def prep_data(name):
     data = parse_summary(f'logs/summary_{name}.txt')
-    if name == 'B_to_B':
-        more_data = parse_summary('logs/oct28.txt')
-        data = np.vstack([data,more_data])
+
     data, hulls = process_variance(data)
     ord = np.argsort(data[:,d['iters']],axis=0,kind='stable')
     data = data[ord,:]
@@ -154,11 +158,14 @@ def B_to_B():
     draw_line(data, colors[0][3], 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC', 'iters'])
     draw_line(data, 'silver', 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, 'distratio', 1, label_fields=['BFR','GC', 'iters','distratio'])
 
-    draw_line(data, colors[1][1], 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC', 'iters'])
+    draw_line(data, colors[1][1], 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC', 'iters'])    
+
     draw_references(ref_data, ref_names)
 
     draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
+    draw_line(data, 'lightpink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','edgelen'])    
     draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, label_fields=['BFR','GC','iters','conf', 'distratio', 'prosac'])    
+    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'distratio', 'prosac', 'edgelen'])    
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
@@ -216,13 +223,21 @@ def process_variance(cur_data):
             cur_mean[0,d[k]] = remainder[i,d[k]]
         mean_data_list.append(cur_mean)
     
-        cur_hull = []
-        for j in range(2):
-            points = np.vstack([cur_d[:,d[flds[j][0]]], cur_d[:,d[flds[j][1]]]]).T
-            h = ConvexHull(points)
-            cur_hull.append([deepcopy(points), deepcopy(h)])
-        cur_hull.append(deepcopy(args))
-        hulls.append(cur_hull)
+        if cur_d.shape[0]>2:
+            cur_hull = []
+            for j in range(2):
+                points = np.vstack([cur_d[:,d[flds[j][0]]], cur_d[:,d[flds[j][1]]]]).T
+                try:
+                    h = ConvexHull(points)
+                except qhull.QhullError as E:
+                    if "input is less than 2-dimensional since all points have the same" in str(E):
+                        points += 0.001*np.random.rand(*points.shape)
+                        h = ConvexHull(points)
+                    else:
+                        raise E
+                cur_hull.append([deepcopy(points), deepcopy(h)])
+            cur_hull.append(deepcopy(args))
+            hulls.append(cur_hull)
 
         remainder = remainder[~mask,:]
         is_multi_take = remainder[:,d['take']]>1
@@ -249,6 +264,8 @@ def draw_line(data, color, *args , label_fields=None, print_data=False):
         args += ('coherence', 0)
     if 'distratio' not in args:
         args += ('distratio', 0)
+    if 'edgelen' not in args:
+        args += ('edgelen', 0)
 
     is_cur, lbl = get_subset(data, *args , label_fields=label_fields)
 
@@ -265,7 +282,7 @@ def draw_line(data, color, *args , label_fields=None, print_data=False):
                 label=lbl
         )
         
-A_to_B()            
+#A_to_B()            
 B_to_B()
 plt.show()
 
