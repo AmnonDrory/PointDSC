@@ -242,6 +242,12 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         B = xyz1_np[corres_idx1,:].astype(np.float32)
         if args.prosac:
             feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args).detach().cpu().numpy()
+            if args.bb_quality: 
+                is_bb, _ = mark_best_buddies(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
+                m = np.min(feat_dist)
+                M = np.max(feat_dist)
+                feat_dist[~is_bb] += M
+
             match_quality = -feat_dist
         else:
             match_quality = None
