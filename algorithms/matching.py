@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from copy import deepcopy
-from scipy.spatial.distance import cdist
 
 def find_nn(F0, F1, return_2nd=False):
     nn_max_n = 250
@@ -97,14 +96,4 @@ def measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)
     
     dist2 = np.sum((np.array(pcd0_trans.points)[corres_idx0_,:] - np.array(pcd1.points)[corres_idx1_,:])**2, axis=1)
     is_close = dist2 < (2*voxel_size)**2
-    sixes = np.hstack([np.array(pcd0.points)[corres_idx0,:], np.array(pcd1.points)[corres_idx1,:]])
-    inlier_sixes = sixes[is_close,:]
-    n,_ = inlier_sixes.shape
-    six_dist = cdist(inlier_sixes,inlier_sixes)
-    s = np.sort(six_dist,axis=1)
-    med = np.median(s,axis=0)
-    m = np.min(s,axis=0)
-    M = np.max(s,axis=0)
-
-
     return float(is_close.sum()) / len(is_close)
