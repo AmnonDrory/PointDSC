@@ -102,15 +102,18 @@ def A_to_B(show_DGR=False):
     plt.figure()    
     draw_all_hulls(hulls)
     draw_line(data, 'teal', 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
-    draw_line(data, 'lightcoral', 'BFR', 3, 'GC', 1, 'iters', 200000, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])        
+    draw_line(data, 'lightcoral', 'BFR', 3, 'GC', 1, 'iters', 50000, 'conf', 0.99, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])        
     draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])
     draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'])
     draw_references(ref_data, ref_names, show_DGR=show_DGR)
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
+        # ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+        #   fancybox=True, shadow=True)
         ax.legend()
         plt.axis([0,None,None,None])
+
    
     plt.suptitle(name)
 
@@ -334,7 +337,7 @@ def compare_all():
     plt.figure()    
 
     draw_line(data, 'teal', 'AtoB', 1, 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'], marker='P', short_label=True)    
-    draw_line(data, 'lightcoral', 'AtoB', 1, 'BFR', 3, 'GC', 1, 'iters', 200000, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'], marker='P', short_label=True)        
+    draw_line(data, 'lightcoral', 'AtoB', 1, 'BFR', 3, 'GC', 1, 'iters', 50000, 'conf', 0.99, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'], marker='P', short_label=True)        
     draw_line(data, 'blue', 'AtoB', 1, 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','distratio','edgelen'], marker='P', short_label=True)
     draw_line(data, 'purple', 'AtoB', 1, 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'], marker='P', short_label=True)
 
@@ -358,12 +361,80 @@ def compare_all():
     plt.subplot(1,2,1)
     plt.axis(b)
 
-A_to_B()            
-B_to_B()
+def analyze_TEASER_iters():
+    filename = '/home/ad/old_drive/home/ad/PycharmProjects/reference/PointDSC_Fork/logs/TEASER_FAIL_TOLERANT_A_TO_A.txt'
+    with open(filename, 'r') as fid:
+        text = fid.read().splitlines()
+
+    is_bad = []
+    iters = []
+    time = []
+    
+    for i, line in enumerate(text):
+        if line.startswith('num pairs TEASER'):
+            num = int(line.split()[-1])
+            is_bad.append(False)
+            iters.append(num)
+        elif line.startswith('elapsed_time'):
+            cur_time = float(line.split('=')[-1])
+            time.append(cur_time)
+        elif line.startswith('Took too long'):
+            is_bad[-1] = True
+
+    iters = np.array(iters)
+    time = np.array(time)
+    assert len(iters) == len(time), f"len(iters)={len(iters)}, len(time)={len(time)}"
+    is_bad = np.array(is_bad)
+    assert len(iters) == len(is_bad), f"len(iters)={len(iters)}, len(time)={len(is_bad)}"
+
+    min_bad = np.argmin(iters[is_bad])
+    def frac(X):
+        return X.sum()/len(X)
+    good_iters = iters[~is_bad]
+    bad_iters = iters[is_bad]
+    print(frac(good_iters<min_bad))
+    skip = 100
+    xs = []
+    ys_good = []
+    ys_bad = []
+    ratio = []
+    for i in range(0,12000,skip):
+        xs.append(i)
+        ys_good.append(frac((i<=good_iters)&(good_iters<i+skip)))
+        ys_bad.append(frac((i<=bad_iters)&(bad_iters<i+skip)))
+        num_good = ((i<=good_iters)&(good_iters<i+skip)).sum()
+        num_bad = ((i<=bad_iters)&(bad_iters<i+skip)).sum()
+        ratio.append( num_good / (num_good + num_bad) )
+
+
+    print(f"<2000: good:{frac(good_iters<2000):.4f}, bad:{frac(bad_iters<2000):.4f}, percentage good:{(good_iters<2000).sum()/(iters<2000).sum():.4f}")
+    print(f"<2500: good:{frac(good_iters<2500):.4f}, bad:{frac(bad_iters<2500):.4f}, percentage good:{(good_iters<2500).sum()/(iters<2500).sum():.4f}")
+    print(f"<3000: good:{frac(good_iters<3000):.4f}, bad:{frac(bad_iters<3000):.4f}, percentage good:{(good_iters<3000).sum()/(iters<3000).sum():.4f}")
+
+    plt.figure()
+    plt.subplot(2,1,1)
+    plt.plot(xs,ys_good,'g')
+    plt.plot(xs,ys_bad,'r')
+    plt.subplot(2,1,2)
+    plt.plot(xs,ratio,'b')
+    plt.title('fraction of successfull')
+    plt.show()
+
+    # plt.figure()
+    # plt.scatter(iters[is_bad], time[is_bad], c='r')
+    # plt.scatter(iters[~is_bad], time[~is_bad], c='g')
+    # plt.show()
+
+analyze_TEASER_iters()
+        
+        
+
+# A_to_B()            
+# B_to_B()
 # A_to_B(show_DGR=True)            
 # B_to_B(show_DGR=True)
-compare_all()
-plt.show()
+# compare_all()
+# plt.show()
 
 
 
