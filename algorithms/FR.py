@@ -166,12 +166,13 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2n
     idx1_2nd_orig = deepcopy(idx1_2nd)
     corres_idx0 = corres_idx0[keep]
     corres_idx1 = corres_idx1[keep]
+    norm_feat_dist = norm_feat_dist[keep]
     if idx1_2nd is not None:
         idx1_2nd = idx1_2nd[keep]
     else:
         idx1_2nd = None
 
-    return corres_idx0, corres_idx1, idx1_2nd, corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig
+    return corres_idx0, corres_idx1, idx1_2nd, corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig, norm_feat_dist
 
 def FR(A,B, A_feat, B_feat, args, T_gt):    
 
@@ -218,7 +219,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
             corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig = corres_idx0, corres_idx1, idx1_2nd
             corres_idx0, corres_idx1, idx1_2nd = nn_to_mutual(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, force_return_2nd=True)
         elif args.mode == "BFR":
-            corres_idx0, corres_idx1, idx1_2nd, corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig = filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, xyz0, args)
+            corres_idx0, corres_idx1, idx1_2nd, corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig, norm_feat_dist = filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, xyz0, args)
         elif args.mode == "no_filter":
             corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig = corres_idx0, corres_idx1, idx1_2nd
         else:
@@ -242,11 +243,8 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         B = xyz1_np[corres_idx1,:].astype(np.float32)
         if args.prosac:
             feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args).detach().cpu().numpy()
-            if args.bb_quality: 
-                is_bb, _ = mark_best_buddies(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1)
-                m = np.min(feat_dist)
-                M = np.max(feat_dist)
-                feat_dist[~is_bb] += M
+            if args.bb_quality and args.mode=='BFR': 
+                feat_dist = norm_feat_dist
 
             match_quality = -feat_dist
         else:
