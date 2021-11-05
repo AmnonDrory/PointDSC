@@ -13,21 +13,15 @@ from time import time
 from algorithms.matching import find_nn, nn_to_mutual, measure_inlier_ratio
 from algorithms.GC_RANSAC import GC_RANSAC
 
-def calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args):
+def calc_distance_ratio_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd):
+    # calculate the ratio between distance to 1st and idstance to 2nd nearest neighbor, in feature space
     eps = 10**-6
-    if args.use_dist_ratio:
-        A = fcgf_feats0[corres_idx0,:]
-        B_1 = fcgf_feats1[corres_idx1,:]
-        B_2 = fcgf_feats1[idx1_2nd,:]
-        dist_1 = torch.sqrt(torch.sum((A-B_1)**2,axis=1))        
-        dist_2 = torch.sqrt(torch.sum((A-B_2)**2,axis=1))        
-        feat_dist = dist_1 / (dist_2+eps)
-
-    else:
-        F0 = fcgf_feats0[corres_idx0,:]
-        F1 = fcgf_feats1[corres_idx1,:]
-        feat_dist = torch.sqrt(torch.sum((F0-F1)**2,axis=1))        
-    
+    A = fcgf_feats0[corres_idx0,:]
+    B_1 = fcgf_feats1[corres_idx1,:]
+    B_2 = fcgf_feats1[idx1_2nd,:]
+    dist_1 = torch.sqrt(torch.sum((A-B_1)**2,axis=1))        
+    dist_2 = torch.sqrt(torch.sum((A-B_2)**2,axis=1))        
+    feat_dist = dist_1 / (dist_2+eps)
     return feat_dist
 
 def mark_best_buddies(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1):
@@ -60,13 +54,7 @@ def filter_pairs_BFR(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2n
     if args.BFR_strict and (TOTAL_NUM < num_bb):
         TOTAL_NUM = num_bb
 
-    if args.BFR_ignore_bb:
-        assert not args.BFR_strict, "BFR_ignore_bb and BFR_strict are incompatible"
-        is_bb[:] = False
-        num_bb = 0
-
-
-    feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args)
+    feat_dist = calc_distance_ratio_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args)
     def normalize(tens):
         m = torch.min(tens)
         M = torch.max(tens)
@@ -197,17 +185,19 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
     with torch.no_grad():
 
         # 1. Coarse correspondences
-        if args.use_dist_ratio:
-            simple_corres_start_time = time()
-            _, _, _ = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=False)
-            simple_corres_time = time() - simple_corres_start_time
-            corres_start_time = time()
-            corres_idx0, corres_idx1, idx1_2nd = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=True)
-            corres_time = time() - corres_start_time
-            additional_time_for_finding_2nd_closest = corres_time - simple_corres_time
-        else:
-            corres_idx0, corres_idx1, idx1_2nd = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=False)
-            additional_time_for_finding_2nd_closest = 0
+
+        simple_corres_start_time = time()
+        _, _, _ = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=False)
+        simple_corres_time = time() - simple_corres_start_time
+        corres_start_time = time()
+        corres_idx0, corres_idx1, idx1_2nd = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=True)
+        corres_time = time() - corres_start_time
+        additional_time_for_finding_2nd_closest = corres_time - simple_corres_time
+        # 1st nearest neighbor are already available, we're only re-calculating them here for 
+        # convenience, therefore we don;t measure the time for this calculation. However,
+        # 2nd nearest neighbors are not available, and we do want to take into consideration
+        # the time that it takes to calculate them. This allow fair comparison with algorithms 
+        # tha don't need them,. such as PointDSC.
 
         num_pairs_init = len(corres_idx0)
         inlier_ratio_init = measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)
@@ -242,7 +232,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         A = xyz0_np[corres_idx0,:].astype(np.float32)
         B = xyz1_np[corres_idx1,:].astype(np.float32)
         if args.prosac:
-            feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args).detach().cpu().numpy()
+            feat_dist = calc_distance_ratio_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args).detach().cpu().numpy()
             if args.mode=='BFR': 
                 feat_dist = norm_feat_dist.detach().cpu().numpy()
 
