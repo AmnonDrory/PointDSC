@@ -313,10 +313,7 @@ def get_args_and_config():
     parser.add_argument('--BFR_grid_wid', type=int, default=10, help='grid_wid for BFR')
     parser.add_argument('--BFR_ignore_bb', type=str2bool, default=False, help='emulate DFR with BFR')
     parser.add_argument('--GC_conf', type=float, default=0.999, help='confidence for GC_RANSAC')
-    parser.add_argument('--use_dist_ratio', type=str2bool, default=False, help='use dist ratio in prosac and BFR (else actual dist)')    
-    parser.add_argument('--bb_quality', type=str2bool, default=False, help='use bb in calculating match quality')    
-    
-
+    parser.add_argument('--use_dist_ratio', type=str2bool, default=False, help='use dist ratio in prosac and BFR (else actual dist)')            
     
     args = parser.parse_args()
 

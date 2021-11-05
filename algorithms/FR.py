@@ -243,7 +243,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         B = xyz1_np[corres_idx1,:].astype(np.float32)
         if args.prosac:
             feat_dist = calc_distances_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, args).detach().cpu().numpy()
-            if args.bb_quality and args.mode=='BFR': 
+            if args.mode=='BFR': 
                 feat_dist = norm_feat_dist.detach().cpu().numpy()
 
             match_quality = -feat_dist
