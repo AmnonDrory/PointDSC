@@ -69,7 +69,8 @@ def parse_summary(filename):
             elif 'B_to_B' in line:
                 cur_row[d['AtoB']] = 0
             else:
-                assert False, "filename must contain either 'A_to_B' or 'B_to_B'"
+                cur_row[d['AtoB']] = np.nan
+
 
 
         if line.startswith(alg_name + "+ICP"): 
@@ -86,6 +87,32 @@ def parse_summary(filename):
     data = np.vstack(data_list)
     return data
 
+def A_to_S(show_DGR=False):
+    ref_names = ['DGR', 'PointDSC', 'TEASER++', 'MFR+RANSAC', 'DFR+RANSAC']
+    empty = np.zeros([1,6])
+    ref_data = np.vstack([np.zeros([1,6]),
+    np.array([0,0, 76.70, 0.367, 79.01, 0.493]),
+    np.array([0,0,73.65,0.176,86.57,0.263]),
+    np.zeros([1,6]),
+    np.zeros([1,6])])
+    ref_data = ref_data[:,[0,1,3,2,5,4]]
+    name = 'A_to_S'
+
+    data, hulls = prep_data(name)
+
+    plt.figure()    
+    
+    draw_line(data, 'lightcoral', 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])        
+    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])    
+    draw_references(ref_data, ref_names, show_DGR=show_DGR)    
+
+    for i in range(2):
+        ax = plt.subplot(1,2,i+1)
+        ax.legend()
+        plt.axis([0,None,None,None])
+   
+    plt.suptitle(name)
+
 def A_to_B(show_DGR=False):
     ref_names = ['DGR', 'PointDSC', 'TEASER++', 'MFR+RANSAC', 'DFR+RANSAC']
     ref_data = np.array([[0,0, 44.95, 0.418, 48.07, 0.462],
@@ -101,9 +128,10 @@ def A_to_B(show_DGR=False):
     colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
     plt.figure()    
     draw_all_hulls(hulls)
-    draw_line(data, 'teal', 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])    
-    draw_line(data, 'lightcoral', 'BFR', 3, 'GC', 1, 'iters', 50000, 'conf', 0.99, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])        
+    draw_line(data, 'teal', 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])        
+    draw_line(data, 'lightcoral', 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])        
     draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])
+    draw_line(data, 'silver', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])
     draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'])
     draw_references(ref_data, ref_names, show_DGR=show_DGR)
 
@@ -174,13 +202,15 @@ def B_to_B(show_DGR=False):
     draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])        
     draw_line(data, 'teal', 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, 'distratio', 1, label_fields=['BFR','GC', 'iters'])
     draw_line(data, 'lightcoral', 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen', 'conf'])          
+    draw_line(data, 'silver', 'BFR', 2, 'GC', 1, 'iters', 50000, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen', 'conf'])          
 
     draw_references(ref_data, ref_names, show_DGR=show_DGR)
 
     draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
-    draw_line(data, 'lightpink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','edgelen'])    
+    draw_line(data, 'lightpink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','edgelen'])        
     draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, label_fields=['BFR','GC','iters','conf',  'prosac'], print_data=True)    
     draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'])    
+    draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'],print_data=True)    
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
@@ -358,6 +388,7 @@ def compare_all():
     plt.subplot(1,2,1)
     plt.axis(b)
 
+A_to_S()
 A_to_B()            
 B_to_B()
 # A_to_B(show_DGR=True)            
