@@ -102,15 +102,15 @@ def A_to_S(show_DGR=False):
 
     plt.figure()    
     
-    draw_line(data, 'lightcoral', 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])        
-    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])    
+    draw_line(data, 'red', 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])        
+    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])    
+
     draw_references(ref_data, ref_names, show_DGR=show_DGR)    
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
-        ax.legend()
-        plt.axis([0,None,None,None])
-   
+        ax.legend()    
+
     plt.suptitle(name)
 
 def A_to_B(show_DGR=False):
@@ -125,21 +125,18 @@ def A_to_B(show_DGR=False):
 
     data, hulls = prep_data(name)
 
-    colors = [['darkviolet', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','lightcoral', 'tomato', 'firebrick', 'maroon']]
-    plt.figure()    
-    draw_all_hulls(hulls)
-    draw_line(data, 'teal', 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])        
-    draw_line(data, 'lightcoral', 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])        
-    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])
-    draw_line(data, 'silver', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])
-    draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'])
+    colors = [['red', 'turquoise', 'lightsteelblue', 'teal', 'blue'], ['red','red', 'tomato', 'firebrick', 'maroon']]
+    plt.figure()        
+    draw_line(data, 'red', 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])            
+    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])    
+
+
     draw_references(ref_data, ref_names, show_DGR=show_DGR)
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
-        ax.legend()
-        plt.axis([0,None,None,None])
-   
+        ax.legend()    
+
     plt.suptitle(name)
 
 
@@ -160,12 +157,13 @@ def prep_data(names):
     data = data[ord,:]
     return data, hulls
 
-def draw_references(ref_data, ref_names, plot_separator=True, suffix='', show_DGR=False):
+def draw_references(ref_data, ref_names, plot_separator=True, suffix='', show_DGR=False, set_axes=False):
     if show_DGR:
         ignore_list = ['DFR+RANSAC', 'MFR+RANSAC']
     else:
         ignore_list = ['DGR', 'DFR+RANSAC', 'MFR+RANSAC']
     symbols = ['v','s','p','P','*']
+    colors = ['','green','orange','','']
     for j in range(2):
         ax = plt.subplot(1,2,j+1)
         if j==0:
@@ -176,13 +174,39 @@ def draw_references(ref_data, ref_names, plot_separator=True, suffix='', show_DG
         for ref_i in range(len(ref_names)):
             if ref_names[ref_i] in ignore_list:
                 continue
-            plt.plot(ref_data[ref_i][d[flds[j][0]]], ref_data[ref_i][d[flds[j][1]]], symbols[ref_i], label=ref_names[ref_i]+' '+suffix)
+            plt.plot(ref_data[ref_i][d[flds[j][0]]], ref_data[ref_i][d[flds[j][1]]], symbols[ref_i], c=colors[ref_i], label=ref_names[ref_i]+' '+suffix)
+
+    if set_axes:
+        for i in range(2):
+            ax = plt.subplot(1,2,i+1)
+            plt.axis([0,None,None,None])
+            ax.legend()
+    
+    for j in range(2):
         if plot_separator:
+            ax = plt.subplot(1,2,j+1)
             a = ax.axis()
             teaser_t = ref_data[ref_names.index('TEASER++'),d[flds[j][0]]]
             dsc_t = ref_data[ref_names.index('PointDSC'),d[flds[j][0]]]
             m = min(teaser_t, dsc_t)
-            ax.plot([m,m], a[2:],'k--')
+            teaser_acc = ref_data[ref_names.index('TEASER++'),d[flds[j][1]]]
+            dsc_acc = ref_data[ref_names.index('PointDSC'),d[flds[j][1]]]
+            M = max(teaser_acc, dsc_acc)
+            ax.plot([m,m], a[2:],'--',c='gray')
+            ax.plot(list(a[:2]), [M,M],'--',c='gray')
+
+def B_to_B_variants():
+    name = 'B_to_B'
+    data, hulls = prep_data(name)
+
+    plt.figure()
+    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
+    draw_line(data, 'lightpink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','edgelen'])        
+    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, label_fields=['BFR','GC','iters','conf',  'prosac'], print_data=True)    
+    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'])    
+    draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'],print_data=True)    
+
+    plt.suptitle(name + ' variants')    
 
 def B_to_B(show_DGR=False):
     ref_names = ['DGR', 'PointDSC', 'TEASER++', 'MFR+RANSAC', 'DFR+RANSAC']
@@ -197,25 +221,17 @@ def B_to_B(show_DGR=False):
     name = 'B_to_B'
     data, hulls = prep_data(name)
 
-    plt.figure()
-    draw_all_hulls(hulls)
-    draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'])        
-    draw_line(data, 'teal', 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, 'distratio', 1, label_fields=['BFR','GC', 'iters'])
-    draw_line(data, 'lightcoral', 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen', 'conf'])          
-    draw_line(data, 'silver', 'BFR', 2, 'GC', 1, 'iters', 50000, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen', 'conf'])          
+    plt.figure()    
+    draw_line(data, 'black', 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen', 'conf'])          
+    draw_line(data, 'red', 'BFR', 2, 'GC', 1, 'iters', 50000, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen', 'conf'])              
 
-    draw_references(ref_data, ref_names, show_DGR=show_DGR)
-
-    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
-    draw_line(data, 'lightpink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','edgelen'])        
-    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, label_fields=['BFR','GC','iters','conf',  'prosac'], print_data=True)    
     draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'])    
-    draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'],print_data=True)    
+
+    draw_references(ref_data, ref_names, show_DGR=show_DGR)        
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
-        ax.legend()
-        plt.axis([0,None,None,None])
+        ax.legend()    
    
     plt.suptitle(name)
 
@@ -364,17 +380,14 @@ def compare_all():
     plt.figure()    
 
     draw_line(data, 'teal', 'AtoB', 1, 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'], marker='P', short_label=True)    
-    draw_line(data, 'lightcoral', 'AtoB', 1, 'BFR', 3, 'GC', 1, 'iters', 50000, 'conf', 0.99, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'], marker='P', short_label=True)        
+    draw_line(data, 'red', 'AtoB', 1, 'BFR', 3, 'GC', 1, 'iters', 50000, 'conf', 0.99, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'], marker='P', short_label=True)        
     draw_line(data, 'blue', 'AtoB', 1, 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','distratio','edgelen'], marker='P', short_label=True)
     draw_line(data, 'purple', 'AtoB', 1, 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'], marker='P', short_label=True)
 
     draw_line(data, 'purple', 'AtoB', 0, 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'], short_label=True)        
     draw_line(data, 'teal', 'AtoB', 0, 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, 'distratio', 1, label_fields=['BFR','GC', 'iters'], short_label=True)
-    draw_line(data, 'lightcoral', 'AtoB', 0, 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen'], short_label=True)    
+    draw_line(data, 'red', 'AtoB', 0, 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen'], short_label=True)    
     draw_line(data, 'blue', 'AtoB', 0, 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'], short_label=True)    
-
-    draw_references(ref_data, ref_names, plot_separator=False, suffix='cross')
-    draw_references(ref_data_B_to_B, ref_names, plot_separator=False, suffix='same')
 
     for i in range(2):        
         ax = plt.subplot(1,2,i+1)
@@ -387,6 +400,9 @@ def compare_all():
     plt.axis(b)
     plt.subplot(1,2,1)
     plt.axis(b)
+
+    draw_references(ref_data, ref_names, plot_separator=False, suffix='cross', set_axes=False)
+    draw_references(ref_data_B_to_B, ref_names, plot_separator=False, suffix='same', set_axes=False)
 
 A_to_S()
 A_to_B()            
