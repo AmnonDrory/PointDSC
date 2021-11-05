@@ -129,6 +129,8 @@ def A_to_B(show_DGR=False):
     plt.figure()        
     draw_line(data, 'red', 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])            
     draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])    
+    draw_line(data, 'pink', 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, 'coherence', 0.975, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])            
+    draw_line(data, 'cyan', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'coherence', 0.975, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'])    
 
 
     draw_references(ref_data, ref_names, show_DGR=show_DGR)
