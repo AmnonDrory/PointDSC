@@ -10,7 +10,7 @@ import torch
 import open3d as o3d
 from copy import deepcopy
 from time import time
-from algorithms.matching import find_nn, nn_to_mutual, measure_inlier_ratio, Grid_Prioritized_Filter, calc_distance_ratio_in_feature_space
+from algorithms.matching import find_2nn, nn_to_mutual, measure_inlier_ratio, Grid_Prioritized_Filter, calc_distance_ratio_in_feature_space
 from algorithms.GC_RANSAC import GC_RANSAC
 
 def FR(A,B, A_feat, B_feat, args, T_gt):    
@@ -37,18 +37,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
 
         # 1. Coarse correspondences
 
-        simple_corres_start_time = time()
-        _, _, _ = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=False)
-        simple_corres_time = time() - simple_corres_start_time
-        corres_start_time = time()
-        corres_idx0, corres_idx1, idx1_2nd = find_nn(fcgf_feats0, fcgf_feats1, return_2nd=True)
-        corres_time = time() - corres_start_time
-        additional_time_for_finding_2nd_closest = corres_time - simple_corres_time
-        # 1st nearest neighbor are already available, we're only re-calculating them here for 
-        # convenience, therefore we don;t measure the time for this calculation. However,
-        # 2nd nearest neighbors are not available, and we do want to take into consideration
-        # the time that it takes to calculate them. This allow fair comparison with algorithms 
-        # tha don't need them,. such as PointDSC.
+        corres_idx0, corres_idx1, idx1_2nd, additional_time_for_finding_2nd_closest = find_2nn(fcgf_feats0, fcgf_feats1)
 
         num_pairs_init = len(corres_idx0)
         inlier_ratio_init = measure_inlier_ratio(corres_idx0, corres_idx1, pcd0, pcd1, T_gt, voxel_size)
@@ -59,7 +48,7 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         if args.mode == "MFR":
             corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig = corres_idx0, corres_idx1, idx1_2nd
             corres_idx0, corres_idx1, idx1_2nd = nn_to_mutual(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, force_return_2nd=True)
-        elif args.mode == "BFR":
+        elif args.mode == "GPF":
             corres_idx0, corres_idx1, idx1_2nd, corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig, norm_feat_dist = Grid_Prioritized_Filter(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd, xyz0, args)
         elif args.mode == "no_filter":
             corres_idx0_orig, corres_idx1_orig, idx1_2nd_orig = corres_idx0, corres_idx1, idx1_2nd
@@ -83,9 +72,10 @@ def FR(A,B, A_feat, B_feat, args, T_gt):
         A = xyz0_np[corres_idx0,:].astype(np.float32)
         B = xyz1_np[corres_idx1,:].astype(np.float32)
         if args.prosac:
-            feat_dist = calc_distance_ratio_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd).detach().cpu().numpy()
-            if args.mode=='BFR': 
+            if args.mode=='GPF': 
                 feat_dist = norm_feat_dist.detach().cpu().numpy()
+            else:
+                feat_dist = calc_distance_ratio_in_feature_space(fcgf_feats0, fcgf_feats1, corres_idx0, corres_idx1, idx1_2nd).detach().cpu().numpy()
 
             match_quality = -feat_dist
         else:

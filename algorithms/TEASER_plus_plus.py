@@ -8,7 +8,7 @@ import time
 import sys
 import teaserpp_python
 
-from algorithms.matching import find_nn, nn_to_mutual
+from algorithms.matching import find_2nn, nn_to_mutual, Grid_Prioritized_Filter
 
 VOXEL_SIZE = 0.3
 MAX_WAIT = 10 # seconds, when mode==FAIL_TOLERANT
@@ -98,7 +98,7 @@ def Rt2T(R,t):
     T[:3,3] = t
     return T 
 
-def TEASER(A_pcd, B_pcd, A_feats, B_feats, args):
+def TEASER(A_pcd, B_pcd, A_feats, B_feats, A_tensor, args):
     A_xyz = pcd2xyz(A_pcd) # np array of size 3 by N
     B_xyz = pcd2xyz(B_pcd) # np array of size 3 by M
     # establish correspondences by nearest neighbour search in feature space
@@ -106,13 +106,12 @@ def TEASER(A_pcd, B_pcd, A_feats, B_feats, args):
     A_feats = A_feats.to(device)
     B_feats = B_feats.to(device)
     
-    corrs_nn_A, corrs_nn_B, _ = find_nn(A_feats, B_feats, False) # we dont measure time for this because this data is only recalculated here for convenience, it could have been received as input
-    start_time = time.time()
-    corrs_A_tensor, corrs_B_tensor = nn_to_mutual(A_feats, B_feats, corrs_nn_A, corrs_nn_B)
-    correspondence_time = time.time() - start_time
-    print(f"num pairs TEASER: {len(corrs_A_tensor)}")
-    corrs_A = corrs_A_tensor.cpu().detach().numpy()
-    corrs_B = corrs_B_tensor.cpu().detach().numpy()
+    corres_idx0, corres_idx1, idx1_2nd, correspondence_time = find_2nn(A_feats, B_feats)
+    corres_idx0, corres_idx1, idx1_2nd, _, _, _, _ = Grid_Prioritized_Filter(A_feats, B_feats, corres_idx0, corres_idx1, idx1_2nd, A_tensor, args, BB_first=True)
+    
+    print(f"num pairs TEASER: {len(corres_idx0)}")
+    corrs_A = corres_idx0.cpu().detach().numpy()
+    corrs_B = corres_idx1.cpu().detach().numpy()
     A_corr = A_xyz[:,corrs_A] # np array of size 3 by num_corrs
     B_corr = B_xyz[:,corrs_B] # np array of size 3 by num_corrs
 

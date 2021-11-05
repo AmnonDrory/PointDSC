@@ -172,7 +172,7 @@ def eval_KITTI_per_pair(model, dloader, feature_extractor, config, args, rank):
             elif args.algo == 'TEASER':                
                 src_pcd = make_point_cloud(input_dict['pcd0'][0].detach().cpu().numpy())
                 tgt_pcd = make_point_cloud(input_dict['pcd1'][0].detach().cpu().numpy())
-                initial_trans, model_time = TEASER(src_pcd, tgt_pcd, src_features, tgt_features, args)
+                initial_trans, model_time = TEASER(src_pcd, tgt_pcd, src_features, tgt_features, input_dict['pcd0'][0], args)
                 pred_trans = torch.eye(4)[None].to(src_keypts.device)
                 pred_trans[:, :4, :4] = torch.from_numpy(initial_trans)
                 pred_labels = torch.zeros_like(gt_labels) + np.nan                
@@ -307,9 +307,9 @@ def get_args_and_config():
     parser.add_argument('--use_sprt', type=str2bool, default=True, help='use_sprt for GC_RANSAC')
     parser.add_argument('--use_edge_len', type=str2bool, default=False, help='use edge-length pre-emption with GC_RANSAC')    
     parser.add_argument('--prosac', type=str2bool, default=False, help='use prosac for GC_RANSAC')
-    parser.add_argument('--BFR_factor', type=float, default=1.0, help='factor for BFR')
-    parser.add_argument('--BFR_strict', type=str2bool, default=False, help='strict parameter for BFR')
-    parser.add_argument('--BFR_grid_wid', type=int, default=10, help='grid_wid for BFR')
+    parser.add_argument('--GPF_factor', type=float, default=1.0, help='factor for GPF')
+    parser.add_argument('--GPF_grid_wid', type=int, default=10, help='grid_wid for GPF')
+    parser.add_argument('--GPF_max_matches', type=int, default=10**9, help='maximum matches for GPF (when in GPF_after_BB mode)')    
     parser.add_argument('--GC_conf', type=float, default=0.999, help='confidence for GC_RANSAC')    
     
     args = parser.parse_args()
