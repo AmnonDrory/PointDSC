@@ -28,6 +28,8 @@ def GC_RANSAC(A,B, distance_threshold, num_iterations, args, match_quality):
     if args.use_edge_len:
         params['use_sprt'] = True
         params['min_inlier_ratio_for_sprt'] = -1 # negative value signals that c++ code should use edge-len pre-emption
+    if not args.GC_LO:
+        params['neighborhood'] = 1 # non-zero value signals that c++ code should not perform local-optimization
 
     if args.prosac:
         # sort from best quality to worst

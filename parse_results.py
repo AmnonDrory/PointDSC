@@ -202,11 +202,19 @@ def B_to_B_variants():
     data, hulls = prep_data(name)
 
     plt.figure()
-    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf'])    
-    draw_line(data, 'lightpink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','edgelen'])        
-    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, label_fields=['BFR','GC','iters','conf',  'prosac'], print_data=True)    
-    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'])    
-    draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'],print_data=True)    
+    # draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf', 'distratio'], hulls=hulls)    
+    # draw_line(data, 'lightpink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','edgelen', 'distratio'], hulls=hulls)        
+    # draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, label_fields=['BFR','GC','iters','conf',  'prosac','distratio'], hulls=hulls)    
+    
+    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 1, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls)    
+    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls)    
+    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls)    
+    draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls)    
+    draw_line(data, 'lightpink', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'distratio', 0, label_fields=['BFR', 'GC'], hulls=hulls)    
+
+    for i in range(2):
+        ax = plt.subplot(1,2,i+1)
+        ax.legend()    
 
     plt.suptitle(name + ' variants')    
 
@@ -322,27 +330,43 @@ def draw_all_hulls(hulls, color='k'):
         return
 
     for hull in hulls:
-        args = hull[-1]
-        if args[args.index('BFR')+1] == 4:
-            continue
-        for j in range(2):            
-            ax = plt.subplot(1,2,j+1)
-            points, h = hull[j]
-            for simplex in h.simplices:
-                ax.plot(points[simplex, 0], points[simplex, 1], '-', c=color)
-            ax.scatter(points[:,0],points[:,1],color=color,marker='*')
+        draw_hull(hull, 'k')
 
-def draw_line(data, color, *args , label_fields=None, print_data=False, marker=None, short_label=False):
+def get_hull(hulls, args):
+    for j in range(len(hulls)):
+        is_same = True
+        for i in range(0,len(args),2):
+            fld = args[i]
+            ind = hulls[j][2].index(fld)
+            is_same &= (hulls[j][2][ind+1]==args[i+1])
+        if is_same:
+            return hulls[j]
+    return None
+
+def draw_hull(hull, color):
+    if hull is None:
+        return
+    for j in range(2):            
+        ax = plt.subplot(1,2,j+1)
+        points, h = hull[j]
+        for simplex in h.simplices:
+            ax.plot(points[simplex, 0], points[simplex, 1], '--', c=color)
+        ax.scatter(points[:,0],points[:,1],color=color,marker='o',facecolors='none')
+
+def draw_line(data, color, *args , label_fields=None, print_data=False, marker=None, short_label=False, hulls=None):
     if marker is None:
         marker = 'o'
     if 'coherence' not in args:
         args += ('coherence', 0)
     if 'distratio' not in args:
-        args += ('distratio', 0)
+        args += ('distratio', 1)
     if 'edgelen' not in args:
         args += ('edgelen', 0)
 
     is_cur, lbl = get_subset(data, *args , label_fields=label_fields, short_label=short_label)
+    if hulls is not None:
+        hull = get_hull(hulls, args)
+        draw_hull(hull, color)
 
     cur_data = data[is_cur,:]
     if print_data:
@@ -350,9 +374,14 @@ def draw_line(data, color, *args , label_fields=None, print_data=False, marker=N
         print(cur_data)
     for j in range(2):
         ax = plt.subplot(1,2,j+1)
-        ax.plot(cur_data[:,d[flds[j][0]]],
-                cur_data[:,d[flds[j][1]]], 
-                marker + '-', 
+        xs = cur_data[:,d[flds[j][0]]]
+        ys = cur_data[:,d[flds[j][1]]]
+        if len(xs)==1:
+            line = ''
+        else:
+            line = '-'
+        ax.plot(xs,ys,
+                marker + line, 
                 c=color,
                 label=lbl
         )
@@ -406,9 +435,90 @@ def compare_all():
     draw_references(ref_data, ref_names, plot_separator=False, suffix='cross', set_axes=False)
     draw_references(ref_data_B_to_B, ref_names, plot_separator=False, suffix='same', set_axes=False)
 
-A_to_S()
-A_to_B()            
-B_to_B()
+def parse_tables():
+    latex_table = [
+r"\multirow{3}{*}{A} & A & \textbf{99.00} & \uu{96.78} & 94.02 & 73.10 & 0.15 \\\cline{2-7}",
+r"& B & \uu{88.98} & \textbf{92.75} & 88.53 & 85.67 & 0.08 \\\cline{2-7}",
+r"& S & \textbf{96.70} & \uu{95.72} & 93.54 & 81.45 & 0.11  \\\Xhline{2\arrayrulewidth}",
+r"\multirow{3}{*}{B} & A & \uu{73.88} & \textbf{74.54} & 66.40 & 72.11 & 0.08  \\\cline{2-7}",
+r"& B & \textbf{88.70} & \uu{88.31} &  82.37 & 86.88 &  0.12 \\\cline{2-7}",
+r"& S & \textbf{82.75} & \uu{81.29} & 75.39 & 79.63 &  0.11  \\\Xhline{2\arrayrulewidth}",
+r"\multirow{3}{*}{S} & A & 86.19 & \textbf{87.19} & 79.01 & \uu{86.69} &  0.08  \\\cline{2-7}",
+r"& B & 87.42 & \textbf{89.97} & 82.02 & \uu{89.16} &  0.08 \\\cline{2-7}",
+r"& S & \textbf{93.98} & \uu{93.75} & 90.59 & 93.29 &  0.12 \\\hline"
+]
+
+    def extract_data(text):
+        data = []
+        for line in text:
+            if line.startswith("==>"):
+                for tgt in ['A','B','S']:
+                    for src in ['A','B','S']:
+                        if f"_{src}_to_{tgt}_" in line:
+                            cur_src = src
+                            cur_tgt = tgt                                            
+            
+            if "filtered pairs" in line:
+                a = line.split('(')
+                b = a[1].split()
+                inlier_ratio = float(b[0])
+            
+            if line.startswith("GC+ICP"): 
+                a = line.split(',')            
+                acc_icp = float(a[0].split()[-1][:-1])            
+                data.append([cur_src, cur_tgt, acc_icp, inlier_ratio])
+
+        res = np.vstack(data)
+        return res
+
+    with open('logs/GPF_full_table.txt','r') as fid:
+        GPF_text = fid.read().splitlines()
+    GPF_data = extract_data(GPF_text)
+
+    with open('logs/MFR_full_table.txt','r') as fid:
+        MFR_text = fid.read().splitlines()        
+    MFR_data = extract_data(MFR_text)
+
+    new_latex_table = []
+    latex_row_ind = 0
+    for tgt in ['A','B','S']:
+        for src in ['A','B','S']:
+            print(f'latex_row_ind={latex_row_ind}')
+            latex_row = latex_table[latex_row_ind]
+            a = latex_row.split('&')
+            cur_row_GPF = (GPF_data[:,0] == src) & (GPF_data[:,1] == tgt)
+            assert cur_row_GPF.sum() == 1
+            GPF_acc = float(GPF_data[cur_row_GPF,2])
+            inlier_ratio = float(GPF_data[cur_row_GPF,3])
+            cur_row_MFR = (MFR_data[:,0] == src) & (MFR_data[:,1] == tgt)
+            assert cur_row_MFR.sum() == 1
+            MFR_acc = float(MFR_data[cur_row_MFR,2])
+            inlier_ratio2 = float(MFR_data[cur_row_MFR,3]) # AD DEL
+            assert (float(inlier_ratio2)==float(inlier_ratio)) # AD DEL
+            a[2] = f' {GPF_acc:.2f} '
+            a[3] = f' {MFR_acc:.2f} '
+            b = a[-1].split()
+            b[0] = f' {inlier_ratio:.2f} '
+            a[-1] = ''.join(b)         
+            if tgt == 'A': # manually insert some new TEASER results (with GPF)
+                if src == 'A':
+                    a[-2] = ' 96.65 '
+                elif src  == 'B':
+                    a[-2] = ' 92.62 '
+                elif src == 'S':
+                    a[-2] = ' 95.16 '
+
+            new_latex_table.append('&'.join(a))
+            latex_row_ind += 1
+        
+    for line in new_latex_table:
+        print(line)
+
+parse_tables()
+#B_to_B_variants()
+# A_to_S()
+# A_to_B()            
+# B_to_B()
 # A_to_B(show_DGR=True)            
 # B_to_B(show_DGR=True)
 # compare_all()

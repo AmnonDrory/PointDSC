@@ -311,6 +311,7 @@ def get_args_and_config():
     parser.add_argument('--GPF_grid_wid', type=int, default=10, help='grid_wid for GPF')
     parser.add_argument('--GPF_max_matches', type=int, default=10**9, help='maximum matches for GPF (when in GPF_after_BB mode)')    
     parser.add_argument('--GC_conf', type=float, default=0.999, help='confidence for GC_RANSAC')    
+    parser.add_argument('--GC_LO', type=str2bool, default=True, help='perform local-optimization in GC_RANSAC')
     
     args = parser.parse_args()
 
