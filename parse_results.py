@@ -1,13 +1,14 @@
 from sys import platform
 import numpy as np
 np.set_printoptions(precision=4,suppress=True, linewidth=100)
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial import qhull, ConvexHull
 
 from copy import deepcopy
 
-keys = ['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC', 'prosac', 'conf', 'take', 'coherence', 'distratio', 'edgelen', 'AtoB']
+keys = ['iters','BFR','t_base', 'acc_base', 't_icp', 'acc_icp', 'GC', 'prosac', 'conf', 'take', 'coherence', 'distratio', 'edgelen', 'AtoB', 'LO']
 
 d = { k:i for i,k in enumerate(keys)}
 flds  = [['t_base', 'acc_base'], ['t_icp', 'acc_icp']]
@@ -45,7 +46,7 @@ def parse_summary(filename):
             else:
                 cur_row[d['conf']] = 0.999 # default
             if 'prosac' in b:
-                cur_row[d['prosac']] = 1
+                cur_row[d['prosac']] = float(b[b.index('prosac')+1])
             else:
                 cur_row[d['prosac']] = 0
             if 'coherence' in b:
@@ -64,6 +65,10 @@ def parse_summary(filename):
                 cur_row[d['edgelen']] = float(b[b.index('edgelen')+1])
             else:
                 cur_row[d['edgelen']] = 0                
+            if 'LO' in b:
+                cur_row[d['LO']] = float(b[b.index('LO')+1])
+            else:
+                cur_row[d['LO']] = 1                                
             if 'A_to_B' in line:
                 cur_row[d['AtoB']] = 1
             elif 'B_to_B' in line:
@@ -165,7 +170,7 @@ def draw_references(ref_data, ref_names, plot_separator=True, suffix='', show_DG
     else:
         ignore_list = ['DGR', 'DFR+RANSAC', 'MFR+RANSAC']
     symbols = ['v','s','p','P','*']
-    colors = ['','green','orange','','']
+    colors = ['black','green','orange','','']
     for j in range(2):
         ax = plt.subplot(1,2,j+1)
         if j==0:
@@ -202,22 +207,25 @@ def B_to_B_variants():
     data, hulls = prep_data(name)
 
     plt.figure()
-    # draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, label_fields=['BFR','GC','iters','conf', 'distratio'], hulls=hulls)    
-    # draw_line(data, 'lightpink', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','edgelen', 'distratio'], hulls=hulls)        
-    # draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, label_fields=['BFR','GC','iters','conf',  'prosac','distratio'], hulls=hulls)    
-    
-    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 1, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls)    
-    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls)    
-    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls)    
-    draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls)    
-    draw_line(data, 'lightpink', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'distratio', 0, label_fields=['BFR', 'GC'], hulls=hulls)    
+   
+    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 1, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='o', label='+prosac +edge-len')    
+    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='D', label='+prosac')    
+    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='d', label='+edge-len')    
+    draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='P', label='local-optimization only')    
+    draw_line(data, 'yellow', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, 'LO', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='P', label='-LO +edge-len')    
+
+    #draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'distratio', 0, label_fields=['BFR', 'GC'], hulls=hulls, marker='s')    
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
-        ax.legend()    
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), fancybox=True, shadow=True)
+        #ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.3), fancybox=True, shadow=True)        
+        plt.xlabel("Time(s)")
+        if i == 0:
+            plt.ylabel("Recall(%)")
 
-    plt.suptitle(name + ' variants')    
-
+    #plt.gcf().subplots_adjust(bottom=0.1, top=0.8)
+    plt.gcf().subplots_adjust(bottom=0.3)
 def B_to_B(show_DGR=False):
     ref_names = ['DGR', 'PointDSC', 'TEASER++', 'MFR+RANSAC', 'DFR+RANSAC']
     ref_data = np.array([
@@ -343,7 +351,7 @@ def get_hull(hulls, args):
             return hulls[j]
     return None
 
-def draw_hull(hull, color):
+def draw_hull(hull, color, marker):
     if hull is None:
         return
     for j in range(2):            
@@ -351,9 +359,9 @@ def draw_hull(hull, color):
         points, h = hull[j]
         for simplex in h.simplices:
             ax.plot(points[simplex, 0], points[simplex, 1], '--', c=color)
-        ax.scatter(points[:,0],points[:,1],color=color,marker='o',facecolors='none')
+        ax.scatter(points[:,0],points[:,1],color=color,marker=marker,facecolors='none')
 
-def draw_line(data, color, *args , label_fields=None, print_data=False, marker=None, short_label=False, hulls=None):
+def draw_line(data, color, *args , label_fields=None, print_data=False, marker=None, short_label=False, hulls=None, label=None):
     if marker is None:
         marker = 'o'
     if 'coherence' not in args:
@@ -362,11 +370,16 @@ def draw_line(data, color, *args , label_fields=None, print_data=False, marker=N
         args += ('distratio', 1)
     if 'edgelen' not in args:
         args += ('edgelen', 0)
+    if 'LO' not in args:
+        args += ('LO', 1)        
 
     is_cur, lbl = get_subset(data, *args , label_fields=label_fields, short_label=short_label)
     if hulls is not None:
         hull = get_hull(hulls, args)
-        draw_hull(hull, color)
+        draw_hull(hull, color, marker)
+
+    if label is not None:
+        lbl = label
 
     cur_data = data[is_cur,:]
     if print_data:
@@ -410,15 +423,21 @@ def compare_all():
 
     plt.figure()    
 
-    draw_line(data, 'teal', 'AtoB', 1, 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'], marker='P', short_label=True)    
-    draw_line(data, 'red', 'AtoB', 1, 'BFR', 3, 'GC', 1, 'iters', 50000, 'conf', 0.99, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'], marker='P', short_label=True)        
-    draw_line(data, 'blue', 'AtoB', 1, 'BFR', -1, 'GC', 1, 'iters', 800000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','distratio','edgelen'], marker='P', short_label=True)
-    draw_line(data, 'purple', 'AtoB', 1, 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'], marker='P', short_label=True)
+    #draw_line(data, 'teal', 'AtoB', 1, 'BFR', 3, 'GC', 0, 'iters', 500000, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'], marker='P', short_label=True)    
+    draw_line(data, 'red', 'AtoB', 1, 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'], marker='P', short_label=True)        
+    draw_line(data, 'blue', 'AtoB', 1, 'BFR', -1, 'GC', 1, 'iters', 1000000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','distratio','edgelen'], marker='P', short_label=True)
+    #draw_line(data, 'purple', 'AtoB', 1, 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, 'coherence', 0, label_fields=['BFR','GC'], marker='P', short_label=True)
 
-    draw_line(data, 'purple', 'AtoB', 0, 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'], short_label=True)        
-    draw_line(data, 'teal', 'AtoB', 0, 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, 'distratio', 1, label_fields=['BFR','GC', 'iters'], short_label=True)
-    draw_line(data, 'red', 'AtoB', 0, 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen'], short_label=True)    
-    draw_line(data, 'blue', 'AtoB', 0, 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'], short_label=True)    
+    draw_line(data, 'red', 'AtoB', 0, 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','edgelen'], short_label=True)        
+    draw_line(data, 'blue', 'AtoB', 0, 'BFR', -1, 'GC', 1, 'iters', 1000000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf','prosac','distratio','edgelen'], short_label=True)
+
+    # draw_line(data, 'purple', 'AtoB', 0, 'BFR', -1, 'GC', 0, 'iters', 10**6, 'prosac', 0, 'conf', 0.999, label_fields=['BFR','GC','iters'], short_label=True)        
+    # draw_line(data, 'teal', 'AtoB', 0, 'BFR', 3, 'GC', 0, 'iters', 1500000, 'prosac', 0, 'conf', 0.999, 'distratio', 1, label_fields=['BFR','GC', 'iters'], short_label=True)
+    # draw_line(data, 'red', 'AtoB', 0, 'BFR', 3, 'GC', 1, 'iters', 10**6, 'prosac', 1, 'conf', 0.999, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC', 'iters', 'prosac', 'edgelen'], short_label=True)    
+    # draw_line(data, 'blue', 'AtoB', 0, 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'distratio', 1, 'edgelen', 1, label_fields=['BFR','GC','iters','conf', 'prosac', 'edgelen'], short_label=True)    
+
+    draw_references(ref_data, ref_names, plot_separator=False, suffix='cross', set_axes=False, show_DGR=True)
+    draw_references(ref_data_B_to_B, ref_names, plot_separator=False, suffix='same', set_axes=False, show_DGR=True)
 
     for i in range(2):        
         ax = plt.subplot(1,2,i+1)
@@ -430,10 +449,7 @@ def compare_all():
     ax.legend()
     plt.axis(b)
     plt.subplot(1,2,1)
-    plt.axis(b)
-
-    draw_references(ref_data, ref_names, plot_separator=False, suffix='cross', set_axes=False)
-    draw_references(ref_data_B_to_B, ref_names, plot_separator=False, suffix='same', set_axes=False)
+    plt.axis(b)    
 
 def parse_tables():
     latex_table = [
@@ -514,14 +530,113 @@ r"& S & \textbf{93.98} & \uu{93.75} & 90.59 & 93.29 &  0.12 \\\hline"
     for line in new_latex_table:
         print(line)
 
-parse_tables()
+def parse_running_times():
+    
+    def extract_data(data_name):        
+        if data_name == "TEASER":
+            alg_name = "TEASER"
+        else:
+            alg_name = "GC"
+
+        with open(f'logs/{data_name}_full_table.txt','r') as fid:
+            text = fid.read().splitlines()
+        
+        data = []
+        t_base = None
+        for line in text:
+            if line.startswith("==>"):
+                for tgt in ['A','B','S']:
+                    for src in ['A','B','S']:
+                        if (f"_{src}_to_{tgt}_" in line) or (f"_{src}_TO_{tgt}_" in line):
+                            cur_src = src
+                            cur_tgt = tgt             
+                         
+                        elif (f"train_{src}" in line) and (f"test_{tgt}" in line):
+                            cur_src = src
+                            cur_tgt = tgt              
+            
+            if line.startswith(alg_name + "+ICP"): 
+                a = line.split(',')            
+                t_icp = float(a[-1].split()[-1])        
+                if alg_name=="TEASER":
+                    t_icp *= 0.75   
+                data.append([cur_src, cur_tgt, t_base, t_icp])
+
+            elif line.startswith(alg_name):
+                a = line.split(',')
+                t_base = float(a[-2].split()[-1])
+                if alg_name=="TEASER":
+                    t_base *= 0.75               
+
+        res = np.vstack(data)
+        return res
+
+    D = {}
+    data_names = ['GPF','MFR','TEASER']
+    for data_name in data_names:
+        D[data_name] = extract_data(data_name)
+
+    base_list = []
+    icp_list = []
+    for tgt in ['A','B','S']:
+        for src in ['A','B','S']:            
+            cur_base = []
+            cur_icp = []
+            for data_name in data_names:
+                is_cur_row = (D[data_name][:,0] == src) & (D[data_name][:,1] == tgt)
+                assert is_cur_row.sum() == 1
+                cur_base.append(D[data_name][is_cur_row,2])
+                cur_icp.append(D[data_name][is_cur_row,3])
+            base_list.append(cur_base)
+            icp_list.append(cur_icp)
+
+    print("tgt | src ||        base        ||        icp         |")
+    print("    |     || GPF | MFR | TEASER || GPF | MFR | TEASER |")
+    print("------------------------------------------------------|")
+
+    i = 0
+    for tgt in ['A','B','S']:
+        for src in ['A','B','S']:            
+            print(f" {tgt}  | {src}  | {float(base_list[i][0]):.2f} | {float(base_list[i][1]):.2f} | {float(base_list[i][2]):.2f}  || {float(icp_list[i][0]):.2f} | {float(icp_list[i][1]):.2f} | {float(icp_list[i][2]):.2f}")
+            i += 1
+
+def bar_kitti_10m():    
+    matplotlib.rcParams.update({'font.size': 12})
+    names = np.array(['DGR', 'PointDSC', 'HRegNet', 'D3Feat', 'PREDATOR'])
+    recalls = np.array([96.9, 98.2, 99.7, 99.8, 99.8])
+    nums = np.array([555-17,555-10, 555-2, 555-1, 555-1])
+    ord = np.argsort(nums)    
+    nums = nums[ord]
+    recalls = recalls[ord]
+    names = names[ord]
+    fig, ax = plt.subplots()
+    colors = ['teal','green','blue','darkgoldenrod','m']
+    bar_plot = plt.bar(np.arange(len(nums)), recalls, tick_label=names,color=colors)
+    #ax = plt.axis()
+    #plt.plot(ax[:2], [100]*2, 'k--')
+    #plt.xticks(np.arange(len(nums)), names)
+    plt.ylabel('Recall (%)')
+
+    def autolabel(rects):
+        for idx,rect in enumerate(bar_plot):
+            height = rect.get_height()
+            ax.text(rect.get_x() + rect.get_width()/2., 0.87*height,
+                    f"{recalls[idx]}%\n({nums[idx]})",
+                    ha='center', va='bottom', rotation=0, c='w')
+        
+    autolabel(bar_plot)
+    plt.axis([None,None,None,100])
+
+#bar_kitti_10m()
+#parse_running_times()
+#parse_tables()
 #B_to_B_variants()
 # A_to_S()
 # A_to_B()            
 # B_to_B()
 # A_to_B(show_DGR=True)            
 # B_to_B(show_DGR=True)
-# compare_all()
+compare_all()
 plt.show()
 
 
