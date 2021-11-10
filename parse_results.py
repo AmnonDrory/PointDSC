@@ -208,13 +208,15 @@ def B_to_B_variants():
 
     plt.figure()
    
-    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 1, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='o', label='+prosac +edge-len')    
-    draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='D', label='+prosac')    
-    draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='d', label='+edge-len')    
-    draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='P', label='local-optimization only')    
-    draw_line(data, 'yellow', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, 'LO', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='P', label='-LO +edge-len')    
-
-    #draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'distratio', 0, label_fields=['BFR', 'GC'], hulls=hulls, marker='s')    
+    # draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 1, 'coherence', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='o', label='+PROSAC +ELC')    
+    # draw_line(data, 'darkorange', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='D', label='+PROSAC')    
+    # draw_line(data, 'black', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='d', label='+ELC')    
+    # draw_line(data, 'green', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='P', label='LO only')    
+    
+    draw_line(data, 'blue', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 1, 'coherence', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='o', label='+PROSAC +ELC')    
+    draw_line(data, 'cyan', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 1, 'edgelen', 1, 'coherence', 0.975, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='^', label='+PROSAC +ELC +GC')    
+    draw_line(data, 'red', 'BFR', -1, 'GC', 1, 'iters', 10**6, 'conf', 0.9995, 'prosac', 0, 'edgelen', 1, 'LO', 0, label_fields=['BFR', 'prosac', 'edgelen'], hulls=hulls, marker='p', label='-LO +ELC')    
+    draw_line(data, 'purple', 'BFR', -1, 'GC', 0, 'iters', 10**6, 'distratio', 0, label_fields=['BFR', 'GC'], hulls=hulls, marker='s', label='Open3D +ELC')    
 
     for i in range(2):
         ax = plt.subplot(1,2,i+1)
@@ -226,6 +228,7 @@ def B_to_B_variants():
 
     #plt.gcf().subplots_adjust(bottom=0.1, top=0.8)
     plt.gcf().subplots_adjust(bottom=0.3)
+
 def B_to_B(show_DGR=False):
     ref_names = ['DGR', 'PointDSC', 'TEASER++', 'MFR+RANSAC', 'DFR+RANSAC']
     ref_data = np.array([
@@ -359,7 +362,7 @@ def draw_hull(hull, color, marker):
         points, h = hull[j]
         for simplex in h.simplices:
             ax.plot(points[simplex, 0], points[simplex, 1], '--', c=color)
-        ax.scatter(points[:,0],points[:,1],color=color,marker=marker,facecolors='none')
+        #ax.scatter(points[:,0],points[:,1],color=color,marker=marker,facecolors='none')
 
 def draw_line(data, color, *args , label_fields=None, print_data=False, marker=None, short_label=False, hulls=None, label=None):
     if marker is None:
@@ -450,6 +453,72 @@ def compare_all():
     plt.axis(b)
     plt.subplot(1,2,1)
     plt.axis(b)    
+
+def bar_cross_training():
+    ref_names = ['DGR', 'PointDSC', 'TEASER++', 'MFR+RANSAC', 'DFR+RANSAC']
+    ref_data_A_to_B = np.array([[0,0, 44.95, 0.418, 48.07, 0.462],
+        [0,0,63.97,0.234,66.78,0.293],
+        [0,0,59.88,0.146,71.99,0.213],
+        [0,0,66.01,0.137,74.54,0.197],
+        [0,0,64.16,0.126,73.88,0.188]])
+    ref_data_A_to_B = ref_data_A_to_B[:,[0,1,3,2,5,4]]
+
+    ref_data_B_to_B = np.array([
+        [0,0, 57.91,0.453,61.81,0.494],
+        [0,0,80.56,0.236,82.48,0.290],
+        [0,0,77.43,0.331,86.88,0.378],
+        [0,0,83.37,0.078,88.31,0.133],
+        [0,0,82.14,0.109,88.70,0.165]])
+    ref_data_B_to_B = ref_data_B_to_B[:,[0,1,3,2,5,4]]
+
+    data, hulls = prep_data(['A_to_B', 'B_to_B'])
+
+
+    plt.figure()    
+
+    is_cur, _ = get_subset(data, 'AtoB', 1, 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, 'coherence', 0)
+    AtoB_GPF_row = data[is_cur,:].squeeze()
+    is_cur, _ = get_subset(data, 'AtoB', 1, 'BFR', -1, 'GC', 1, 'iters', 1000000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1, )
+    AtoB_MFR_row = data[is_cur,:].squeeze()
+    
+    is_cur, _ = get_subset(data, 'AtoB', 0, 'BFR', 2, 'GC', 1, 'iters', 50000, 'conf', 0.999, 'prosac', 1, 'distratio', 1, 'edgelen', 1, 'coherence', 0)        
+    BtoB_GPF_row = data[is_cur,:].squeeze()
+    is_cur, _ = get_subset(data, 'AtoB', 0, 'BFR', -1, 'GC', 1, 'iters', 1000000, 'conf', 0.9995, 'coherence', 0, 'prosac', 1, 'distratio', 1, 'edgelen', 1)
+    BtoB_MFR_row = data[is_cur,:].squeeze()
+    
+    names = np.array(['RANSAC\n(GPF)', 'RANSAC\n(mutual)', 'DGR', 'PointDSC', 'TEASER++'])
+    AtoB_data = np.array([AtoB_GPF_row[d['acc_base']], 
+        AtoB_MFR_row[d['acc_base']], 
+        ref_data_A_to_B[0][3], 
+        ref_data_A_to_B[1][3], 
+        ref_data_A_to_B[2][3] ])
+
+    BtoB_data = np.array([BtoB_GPF_row[d['acc_base']], 
+        BtoB_MFR_row[d['acc_base']], 
+        ref_data_B_to_B[0][3], 
+        ref_data_B_to_B[1][3], 
+        ref_data_B_to_B[2][3] ])
+
+    ord = np.argsort(BtoB_data)[::-1]
+
+    names = names[ord]
+    AtoB_data = AtoB_data[ord]
+    BtoB_data = BtoB_data[ord]
+
+    x = np.arange(len(names))
+    width = 0.35  
+
+    fig, ax = plt.subplots()
+    rects1 = ax.bar(x - width/2, BtoB_data, width, label='Same Domain')
+    rects2 = ax.bar(x + width/2, AtoB_data, width, label='Cross Domain')
+
+    ax.set_ylabel('Recall (%)')
+    ax.set_xticks(x)
+    ax.set_xticklabels(names)
+    ax.legend()
+
+    fig.tight_layout()
+
 
 def parse_tables():
     latex_table = [
@@ -630,13 +699,14 @@ def bar_kitti_10m():
 #bar_kitti_10m()
 #parse_running_times()
 #parse_tables()
-#B_to_B_variants()
+B_to_B_variants()
 # A_to_S()
 # A_to_B()            
 # B_to_B()
 # A_to_B(show_DGR=True)            
 # B_to_B(show_DGR=True)
-compare_all()
+#compare_all()
+#bar_cross_training()
 plt.show()
 
 

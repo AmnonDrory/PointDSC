@@ -134,7 +134,7 @@ def RANSAC_registration(pcd0, pcd1, idx0, idx1,
             max_correspondence_distance=distance_threshold, 
             ransac_n=4,
             checkers=[o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength()],
-            criteria=o3d.pipelines.registration.RANSACConvergenceCriteria(max_iteration=num_iterations, confidence=0.9999)
+            criteria=o3d.pipelines.registration.RANSACConvergenceCriteria(max_iteration=num_iterations, confidence=0.9995)
         )
     else:
         result = o3d.pipelines.registration.registration_ransac_based_on_correspondence(
